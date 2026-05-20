@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+oandapyV20
+python-dotenv
+requests
