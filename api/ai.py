@@ -184,14 +184,3 @@ SUMMARY: [2 sentences max in plain English]"""
             elif line.startswith("SUMMARY:"):
                 result["summary"] = line.replace("SUMMARY:", "").strip()
         return result
-
-# Token budget guard — only analyse signals worth acting on
-GROQ_MIN_SCORE = 4  # Only call Groq if confluence score >= this
-
-def should_analyse(signal: dict) -> bool:
-    """Return True only if signal is worth spending Groq tokens on."""
-    if signal.get("signal") not in ("BUY", "SELL"):
-        return False
-    if signal.get("confluence_score", 0) < GROQ_MIN_SCORE:
-        return False
-    return True
