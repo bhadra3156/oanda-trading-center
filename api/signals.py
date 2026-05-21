@@ -1,10 +1,21 @@
 """
-H4 Signal Engine with Daily Loss Circuit Breaker
+H4 Signal Engine with Daily Loss Circuit Breaker + News Blackout
 RSI + EMA + MACD + ATR + Donchian + Session + MTF
 """
 import logging
 from datetime import datetime, date
 logger = logging.getLogger(__name__)
+
+try:
+    from api.news_check import check_news_blackout
+    NEWS_CHECK_AVAILABLE = True
+except ImportError:
+    try:
+        from news_check import check_news_blackout
+        NEWS_CHECK_AVAILABLE = True
+    except ImportError:
+        NEWS_CHECK_AVAILABLE = False
+        logger.warning("news_check module not found — news blackout disabled")
 
 DAILY_LOSS_LIMIT_PCT = 0.05   # 5% of balance triggers circuit breaker
 
@@ -135,6 +146,49 @@ class SignalEngine:
                     "candle_count": 0,
                 }
 
+            # ── NEWS BLACKOUT CHECK ────────────────────────────────────────
+            if NEWS_CHECK_AVAILABLE:
+                try:
+                    news = check_news_blackout(instrument)
+                    if news.get("blocked"):
+                        logger.info(f"News blackout: {instrument} — {news['reason']}")
+                        price = self._safe_price(instrument)
+                        return {
+                            "instrument":      instrument,
+                            "timeframe":       "H4",
+                            "signal":          "WAIT",
+                            "confidence":      0,
+                            "price":           price,
+                            "entry": None, "sl": None, "tp": None,
+                            "sl_pips": None, "tp_pips": None,
+                            "rsi": None, "ema20": None, "ema50": None,
+                            "ema200": None, "atr": None, "macd": None,
+                            "trend": "NEWS",
+                            "session":         get_session()[0],
+                            "vol_surge":       False,
+                            "donchian_high":   None, "donchian_low": None,
+                            "news_blackout":   True,
+                            "news_event":      news.get("event_title", ""),
+                            "news_time":       news.get("event_time", ""),
+                            "news_minutes":    news.get("minutes_to_event"),
+                            "upcoming_events": news.get("upcoming_events", []),
+                            "circuit_breaker": False,
+                            "reasons": [
+                                f"📰 NEWS BLACKOUT — {news.get('event_title','')}",
+                                f"Event at {news.get('event_time','—')} UTC",
+                                f"Trading blocked ±{30} mins around release",
+                                "Wait for volatility to settle"
+                            ],
+                            "candle_count": 0,
+                        }
+                    # Attach upcoming events even when not blocked
+                    upcoming = news.get("upcoming_events", [])
+                except Exception as e:
+                    logger.debug(f"News check error: {e}")
+                    upcoming = []
+            else:
+                upcoming = []
+
             # ── TECHNICAL ANALYSIS ─────────────────────────────────────────
             candles = self.client.get_candles(instrument, granularity="H4", count=250)
             if len(candles) < 210:
@@ -232,8 +286,10 @@ class SignalEngine:
                 "trend":         trend, "session": session, "vol_surge": vol_surge,
                 "donchian_high": round(don_high, 5) if don_high else None,
                 "donchian_low":  round(don_low,  5) if don_low  else None,
-                "reasons":       reasons[:4], "candle_count": len(candles),
+                "reasons":         reasons[:4], "candle_count": len(candles),
                 "circuit_breaker": False,
+                "news_blackout":   False,
+                "upcoming_events": upcoming,
             }
 
         except Exception as e:

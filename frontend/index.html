@@ -356,7 +356,11 @@ function renderSignals(signals,account){
   grid.innerHTML=ordered.map((inst,idx)=>{
     const s=signals[inst.id]||{signal:'WAIT',reasons:['No data']};
     const isBuy=s.signal==='BUY', isSell=s.signal==='SELL', isWait=!isBuy&&!isSell;
-    const cc=isBuy?'buy':isSell?'sell':'wait';
+
+  
+    const isNews = s.news_blackout;
+const isCB   = s.circuit_breaker;
+const cc     = isBuy?'buy':isSell?'sell':'wait';
     const conf=s.confidence||0;
     const confC=conf>70?'h':conf>40?'m':'l';
     const units=(!isWait&&bal>0)?calcUnits(bal,mar,s.sl_pips,inst.id):0;
@@ -403,9 +407,11 @@ function renderSignals(signals,account){
     return `<div class="scard ${cc}" style="animation-delay:${idx*0.04}s">
       <div class="sc-top">
         <div><div class="sc-pair">${inst.name}</div><div class="sc-cat">${inst.cat}</div></div>
-        <span class="sc-badge ${cc}">${s.signal==='BUY'?'▲ BUY':s.signal==='SELL'?'▼ SELL':'— WAIT'}</span>
+        <span class="sc-badge ${cc}">${isCB?'⛔ BLOCKED':isNews?'📰 NEWS':isBuy?'▲ BUY':isSell?'▼ SELL':'— WAIT'}</span>${s.signal==='BUY'?'▲ BUY':s.signal==='SELL'?'▼ SELL':'— WAIT'}</span>
       </div>
       <div class="sc-price">${fmtP(inst.id,s.price)}</div>
+      ${isNews?`<div style="background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.25);border-radius:6px;padding:8px 10px;margin-bottom:8px"><div style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:3px">📰 NEWS BLACKOUT</div><div style="font-size:11px;color:var(--muted2)">${s.news_event||'High-impact event'}</div><div style="font-size:10px;color:var(--gold);font-family:var(--mono);margin-top:2px">${s.news_minutes>0?'In '+s.news_minutes+' min':'Just released'} · ${s.news_time||'—'} UTC · Wait for volatility to settle</div></div>`:''}
+      
       ${levelsHtml}
       <div class="sc-indicators">
         ${s.rsi?`<span class="sc-ind rsi">RSI ${s.rsi}</span>`:''}

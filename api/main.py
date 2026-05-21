@@ -3,7 +3,7 @@ Oanda Trading Center — FastAPI Backend
 Runs on Render.com (free)
 All endpoints for the trading dashboard
 """
-
+from api.news_check import get_all_upcoming_events, check_news_blackout
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -345,17 +345,13 @@ async def get_journal():
         raise HTTPException(status_code=500, detail=str(e))
 
 # ── NEWS ──────────────────────────────────────────────────────────────────────
-@app.get("/api/news")
-async def get_news():
+@app.get("/api/news-check/{instrument}")
+async def news_check_instrument(instrument: str):
     try:
-        import urllib.request, json
-        url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
-        with urllib.request.urlopen(url, timeout=5) as r:
-            events = json.loads(r.read())
-        high = [e for e in events if e.get("impact") == "High"]
-        return {"ok": True, "news": high[:10]}
+        result = check_news_blackout(instrument)
+        return {"ok": True, "result": result}
     except Exception as e:
-        return {"ok": True, "news": [], "error": str(e)}
+        return {"ok": False, "error": str(e)}
 
 # ── CORRELATION ───────────────────────────────────────────────────────────────
 @app.post("/api/check-correlation")
@@ -393,3 +389,14 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("api.main:app", host="0.0.0.0", port=port, reload=False)
+    class DebriefRequest(BaseModel):
+    trades: list
+    prompt: str
+
+@app.post("/api/ai-debrief")
+async def ai_debrief(req: DebriefRequest):
+    try:
+        analysis = gemini.analyse_debrief(req.prompt)
+        return {"ok": True, "analysis": analysis}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
