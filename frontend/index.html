@@ -370,7 +370,7 @@ function renderSignals(signals, account){
     const aiHtml=ai.summary?`
       <div class="sc-ai">
         <div class="sc-ai-hdr">
-          <span class="sc-ai-lbl">Gemini AI</span>
+          <span class="sc-ai-lbl">GROQ AI</span>
           <span class="sc-ai-verdict ${aiClass}">${aiVerdict||'—'}</span>
         </div>
         <div class="sc-ai-text">${(ai.summary||'').substring(0,120)}${(ai.summary||'').length>120?'…':''}</div>
@@ -581,8 +581,8 @@ async function fetchAll(){
       })));
     }
 
-    // Fetch signals (slower — includes Gemini AI)
-    scanLbl.textContent='Running Gemini AI...';
+    // Fetch signals (slower — includes GROQ AI)
+    scanLbl.textContent='Running GROQ AI...';
     const sigR=await fetch(`${API}/api/signals`);
     const sigD=await sigR.json();
     if(sigD.ok&&accD.ok){
