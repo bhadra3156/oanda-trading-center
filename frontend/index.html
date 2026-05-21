@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="stylesheet" href="correlation.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — Oanda Trading Center</title>
@@ -195,6 +196,7 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 @media(max-width:600px){.sig-grid{grid-template-columns:repeat(2,1fr)}.acc-strip{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
+<script src="correlation.js"></script>
 <body>
 
 <nav>
@@ -252,6 +254,7 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 </div><!-- /main -->
 
 <!-- CONFIRM MODAL -->
+ <div id="corr-warnings"></div>
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-title" id="modal-title">Confirm Trade</div>
@@ -370,7 +373,7 @@ function renderSignals(signals, account){
     const aiHtml=ai.summary?`
       <div class="sc-ai">
         <div class="sc-ai-hdr">
-          <span class="sc-ai-lbl">Gemini AI</span>
+          <span class="sc-ai-lbl">GROQ AI</span>
           <span class="sc-ai-verdict ${aiClass}">${aiVerdict||'—'}</span>
         </div>
         <div class="sc-ai-text">${(ai.summary||'').substring(0,120)}${(ai.summary||'').length>120?'…':''}</div>
@@ -581,8 +584,8 @@ async function fetchAll(){
       })));
     }
 
-    // Fetch signals (slower — includes Gemini AI)
-    scanLbl.textContent='Running Gemini AI...';
+    // Fetch signals (slower — includes GROQ AI)
+    scanLbl.textContent='Running GROQ AI...';
     const sigR=await fetch(`${API}/api/signals`);
     const sigD=await sigR.json();
     if(sigD.ok&&accD.ok){
@@ -609,3 +612,4 @@ setInterval(fetchAll, 300000); // 5 minutes
 </script>
 </body>
 </html>
+
