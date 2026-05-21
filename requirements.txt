@@ -4,4 +4,5 @@ oandapyV20==0.7.2
 six
 python-dotenv
 requests
-groqpandas
+groq
+pandas
