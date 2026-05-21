@@ -1,33 +1,40 @@
 """
-Oanda Trading Center — FastAPI Backend
+Oanda Trading Center — FastAPI Backend v2
 Runs on Render.com (free)
 All endpoints for the trading dashboard
 """
-from api.news_check import get_all_upcoming_events, check_news_blackout
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, List
+
 import os
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
 
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List
+
 load_dotenv()
 
-from api.oanda import OandaClient
-from api.signals import SignalEngine
-from api.ai import GeminiAnalyst
-from api.telegram import TelegramBot
+from api.oanda           import OandaClient
+from api.signals         import SignalEngine
+from api.ai              import GeminiAnalyst
+from api.telegram        import TelegramBot
 from api.supabase_client import SupabaseClient
-from api.calculator import PositionCalculator
-from api.correlation import check_correlation, get_correlation_map_for_instrument
+from api.calculator      import PositionCalculator
+from api.news_check      import get_all_upcoming_events, check_news_blackout
+
+try:
+    from api.correlation import check_correlation, get_correlation_map_for_instrument
+    CORRELATION_AVAILABLE = True
+except ImportError:
+    CORRELATION_AVAILABLE = False
 
 # ── SETUP ─────────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Oanda Trading Center", version="1.0.0")
+app = FastAPI(title="Oanda Trading Center", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,13 +51,13 @@ telegram = TelegramBot()
 db       = SupabaseClient()
 calc     = PositionCalculator(oanda)
 
-# Track sent alerts
+# Track sent alerts to avoid duplicates
 _alerted = set()
 
 # ── MODELS ────────────────────────────────────────────────────────────────────
 class OrderRequest(BaseModel):
     instrument:  str
-    direction:   str        # BUY or SELL
+    direction:   str
     units:       int
     stop_loss:   float
     take_profit: float
@@ -65,12 +72,16 @@ class CloseRequest(BaseModel):
 
 class OpenPosition(BaseModel):
     instrument: str
-    direction:  str   # "BUY", "SELL", "LONG", or "SHORT"
+    direction:  str
 
 class CorrelationCheckRequest(BaseModel):
     new_instrument: str
     new_direction:  str
     open_positions: List[OpenPosition]
+
+class DebriefRequest(BaseModel):
+    trades: list
+    prompt: str
 
 # ── HEALTH ────────────────────────────────────────────────────────────────────
 @app.get("/")
@@ -79,6 +90,7 @@ async def health():
     return {
         "status":      "running",
         "service":     "Oanda Trading Center",
+        "version":     "2.0.0",
         "timestamp":   datetime.utcnow().isoformat(),
         "environment": os.getenv("OANDA_ENVIRONMENT", "live").upper()
     }
@@ -124,25 +136,29 @@ async def get_signals():
         results = {}
         for inst in instruments:
             logger.info(f"Analysing {inst}...")
-            sig = signals.analyse(inst)
+            try:
+                sig = signals.analyse(inst)
+            except Exception as e:
+                sig = {"instrument": inst, "signal": "ERROR",
+                       "error": str(e), "reasons": [str(e)], "confidence": 0}
 
-            # Gemini AI analysis for active signals
             if sig.get("signal") in ("BUY", "SELL"):
                 logger.info(f"Gemini analysing {inst}...")
-                ai = gemini.analyse(inst, sig)
-                sig["ai"] = ai
+                try:
+                    ai = gemini.analyse(inst, sig)
+                    sig["ai"] = ai
+                except Exception:
+                    sig["ai"] = None
 
-                # Save to Supabase
                 try:
                     db.save_signal(inst, sig)
                 except Exception as e:
                     logger.error(f"Supabase error: {e}")
 
-                # Telegram alert (no duplicates)
                 alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
                 if alert_key not in _alerted:
                     try:
-                        telegram.send_signal(inst, sig, ai)
+                        telegram.send_signal(inst, sig, sig.get("ai") or {})
                         _alerted.add(alert_key)
                         if len(_alerted) > 200:
                             _alerted.clear()
@@ -176,7 +192,6 @@ async def get_dashboard_data():
 
         sig_results, prices = {}, {}
 
-        # Build open_positions list for correlation checks
         open_positions_for_corr = [
             {
                 "instrument": t.get("instrument"),
@@ -191,24 +206,34 @@ async def get_dashboard_data():
                 sig = signals.analyse(inst)
             except Exception as e:
                 sig = {"instrument": inst, "signal": "ERROR",
-                       "error": str(e), "reasons": [str(e)]}
+                       "error": str(e), "reasons": [str(e)], "confidence": 0}
 
             if sig.get("signal") in ("BUY", "SELL"):
                 logger.info(f"Gemini analysing {inst}...")
-                ai = gemini.analyse(inst, sig)
-                sig["ai"] = ai
-
-                # ── Correlation check attached to each signal ─────────────
                 try:
-                    corr = check_correlation(
-                        new_instrument=inst,
-                        new_direction=sig["signal"],
-                        open_positions=open_positions_for_corr,
-                    )
-                    sig["correlation"] = corr
-                except Exception as e:
-                    logger.error(f"Correlation check error for {inst}: {e}")
-                    sig["correlation"] = {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
+                    ai = gemini.analyse(inst, sig)
+                    sig["ai"] = ai
+                except Exception:
+                    sig["ai"] = None
+
+                if CORRELATION_AVAILABLE:
+                    try:
+                        sig["correlation"] = check_correlation(
+                            new_instrument=inst,
+                            new_direction=sig["signal"],
+                            open_positions=open_positions_for_corr,
+                        )
+                    except Exception as e:
+                        logger.error(f"Correlation error {inst}: {e}")
+                        sig["correlation"] = {
+                            "safe": True, "warnings": [],
+                            "block_trade": False, "summary": ""
+                        }
+                else:
+                    sig["correlation"] = {
+                        "safe": True, "warnings": [],
+                        "block_trade": False, "summary": ""
+                    }
 
                 try:
                     db.save_signal(inst, sig)
@@ -218,13 +243,16 @@ async def get_dashboard_data():
                 alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
                 if alert_key not in _alerted:
                     try:
-                        telegram.send_signal(inst, sig, ai)
+                        telegram.send_signal(inst, sig, sig.get("ai") or {})
                         _alerted.add(alert_key)
                     except Exception:
                         pass
             else:
                 sig["ai"] = None
-                sig["correlation"] = {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
+                sig["correlation"] = {
+                    "safe": True, "warnings": [],
+                    "block_trade": False, "summary": ""
+                }
 
             sig_results[inst] = sig
 
@@ -244,7 +272,6 @@ async def get_dashboard_data():
             "direction":  "LONG" if float(t.get("currentUnits", 0)) > 0 else "SHORT",
         } for t in open_trades]
 
-        # Save account snapshot
         try:
             db.save_account_snapshot(summary)
         except Exception:
@@ -292,7 +319,6 @@ async def place_order(order: OrderRequest):
             stop_loss=order.stop_loss,
             take_profit=order.take_profit
         )
-        # Log to Supabase
         try:
             db.save_trade({
                 "instrument":  order.instrument,
@@ -303,7 +329,6 @@ async def place_order(order: OrderRequest):
             })
         except Exception:
             pass
-        # Telegram confirmation
         try:
             price = oanda.get_live_price(order.instrument)
             entry = price.get("ask" if order.direction == "BUY" else "bid", 0)
@@ -345,6 +370,14 @@ async def get_journal():
         raise HTTPException(status_code=500, detail=str(e))
 
 # ── NEWS ──────────────────────────────────────────────────────────────────────
+@app.get("/api/news")
+async def get_news():
+    try:
+        events = get_all_upcoming_events(hours=24)
+        return {"ok": True, "news": events}
+    except Exception as e:
+        return {"ok": True, "news": [], "error": str(e)}
+
 @app.get("/api/news-check/{instrument}")
 async def news_check_instrument(instrument: str):
     try:
@@ -356,11 +389,8 @@ async def news_check_instrument(instrument: str):
 # ── CORRELATION ───────────────────────────────────────────────────────────────
 @app.post("/api/check-correlation")
 async def check_correlation_endpoint(request: CorrelationCheckRequest):
-    """
-    Called before the trade confirmation modal appears.
-    Body: { new_instrument, new_direction, open_positions: [{instrument, direction}] }
-    Returns: { safe, warnings, block_trade, summary }
-    """
+    if not CORRELATION_AVAILABLE:
+        return {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
     positions_dicts = [
         {"instrument": p.instrument, "direction": p.direction}
         for p in request.open_positions
@@ -372,27 +402,16 @@ async def check_correlation_endpoint(request: CorrelationCheckRequest):
     )
     return result
 
-
 @app.get("/api/correlation-map/{instrument}")
 async def correlation_map_endpoint(instrument: str):
-    """
-    Returns all instruments correlated with the given instrument.
-    Used to populate the correlation map panel in the frontend.
-    """
+    if not CORRELATION_AVAILABLE:
+        return {"instrument": instrument, "correlations": []}
     return {
         "instrument":   instrument,
         "correlations": get_correlation_map_for_instrument(instrument),
     }
 
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("api.main:app", host="0.0.0.0", port=port, reload=False)
-    class DebriefRequest(BaseModel):
-    trades: list
-    prompt: str
-
+# ── AI DEBRIEF ────────────────────────────────────────────────────────────────
 @app.post("/api/ai-debrief")
 async def ai_debrief(req: DebriefRequest):
     try:
@@ -400,3 +419,9 @@ async def ai_debrief(req: DebriefRequest):
         return {"ok": True, "analysis": analysis}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# ── STARTUP ───────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("api.main:app", host="0.0.0.0", port=port, reload=False)
