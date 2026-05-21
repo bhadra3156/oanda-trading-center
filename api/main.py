@@ -1,40 +1,34 @@
 """
-Oanda Trading Center — FastAPI Backend v2
-Runs on Render.com (free)
-All endpoints for the trading dashboard
+main.py — FastAPI backend for Oanda Trading Center.
+
+Routes:
+  GET  /api/health          Server status
+  GET  /api/account         Account summary + daily P&L
+  GET  /api/signals         Full H4 signal scan (all 16 instruments)
+  GET  /api/prices          Live bid/ask for all 16 instruments
+  GET  /api/trades          Open trades with live P&L
+  GET  /api/positions       Open positions
+  POST /api/place-order     Place a market order
+  POST /api/close-trade     Close a specific trade
+  POST /api/breakeven       Move SL to entry price
+  POST /api/trailing-stop   Set trailing stop on a trade
+  POST /api/modify-trade    Modify SL and/or TP on a trade
+  GET  /api/journal         Trade journal stats from Supabase
+  GET  /api/calculator      Position size calculation
 """
 
-import os
 import logging
-from datetime import datetime
-from dotenv import load_dotenv
-
+from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from api import oanda, signals
+from api.pip_utils import get_pip, price_decimals, sl_tp_prices, atr_to_pips
 
-load_dotenv()
-
-from api.oanda           import OandaClient
-from api.signals         import SignalEngine
-from api.ai              import GeminiAnalyst
-from api.telegram        import TelegramBot
-from api.supabase_client import SupabaseClient
-from api.calculator      import PositionCalculator
-from api.news_check      import get_all_upcoming_events, check_news_blackout
-
-try:
-    from api.correlation import check_correlation, get_correlation_map_for_instrument
-    CORRELATION_AVAILABLE = True
-except ImportError:
-    CORRELATION_AVAILABLE = False
-
-# ── SETUP ─────────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Oanda Trading Center", version="2.0.0")
+app = FastAPI(title="Oanda Trading Center API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,401 +37,261 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── CLIENTS ───────────────────────────────────────────────────────────────────
-oanda    = OandaClient()
-signals  = SignalEngine(oanda)
-gemini   = GeminiAnalyst()
-telegram = TelegramBot()
-db       = SupabaseClient()
-calc     = PositionCalculator(oanda)
 
-# Track sent alerts to avoid duplicates
-_alerted = set()
+# ─────────────────────────────────────────────────────────────────────────────
+# Request / Response models
+# ─────────────────────────────────────────────────────────────────────────────
 
-# ── MODELS ────────────────────────────────────────────────────────────────────
-class OrderRequest(BaseModel):
-    instrument:  str
-    direction:   str
-    units:       int
-    stop_loss:   float
-    take_profit: float
+class PlaceOrderRequest(BaseModel):
+    instrument: str
+    direction: str          # "BUY" or "SELL"
+    units: int
+    sl_price: float
+    tp_price: float
 
-class CalculatorRequest(BaseModel):
-    instrument:   str
-    direction:    str
-    risk_percent: float = 1.0
-
-class CloseRequest(BaseModel):
+class CloseTradeRequest(BaseModel):
     trade_id: str
 
-class OpenPosition(BaseModel):
+class BreakevenRequest(BaseModel):
+    trade_id: str
+
+class TrailingStopRequest(BaseModel):
+    trade_id: str
+    trail_pips: float | None = None
+    atr: float | None = None
+    instrument: str | None = None
+
+class ModifyTradeRequest(BaseModel):
+    trade_id: str
     instrument: str
-    direction:  str
+    sl_price: float | None = None
+    tp_price: float | None = None
 
-class CorrelationCheckRequest(BaseModel):
-    new_instrument: str
-    new_direction:  str
-    open_positions: List[OpenPosition]
+class CalculatorRequest(BaseModel):
+    instrument: str
+    direction: str          # "BUY" or "SELL"
+    account_balance: float
+    risk_pct: float = 1.0   # default 1%
 
-class DebriefRequest(BaseModel):
-    trades: list
-    prompt: str
 
-# ── HEALTH ────────────────────────────────────────────────────────────────────
-@app.get("/")
-@app.get("/health")
-async def health():
+# ─────────────────────────────────────────────────────────────────────────────
+# Routes
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/health")
+def health():
     return {
-        "status":      "running",
-        "service":     "Oanda Trading Center",
-        "version":     "2.0.0",
-        "timestamp":   datetime.utcnow().isoformat(),
-        "environment": os.getenv("OANDA_ENVIRONMENT", "live").upper()
+        "status": "ok",
+        "time": datetime.now(timezone.utc).isoformat(),
+        "version": "2.0.0",
+        "session": signals.get_current_session(),
+        "in_session": signals.is_trading_session(),
     }
 
-# ── ACCOUNT ───────────────────────────────────────────────────────────────────
+
 @app.get("/api/account")
-async def get_account():
+def account():
     try:
-        summary = oanda.get_account_summary()
-        pnl     = oanda.get_daily_pnl()
-        return {"ok": True, "account": summary, "pnl": pnl}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ── PRICES ────────────────────────────────────────────────────────────────────
-@app.get("/api/prices")
-async def get_prices():
-    instruments = [
-        "EUR_USD", "GBP_JPY", "XAU_USD", "XAG_USD",
-        "NATGAS_USD", "WTICO_USD", "CORN_USD", "SUGAR_USD",
-        "WHEAT_USD", "SOYBN_USD", "SPX500_USD", "NAS100_USD",
-        "UK100_GBP", "DE30_EUR", "XPD_USD"
-    ]
-    prices = {}
-    for inst in instruments:
-        try:
-            prices[inst] = oanda.get_live_price(inst)
-        except Exception:
-            pass
-    return {"ok": True, "prices": prices,
-            "timestamp": datetime.utcnow().isoformat()}
-
-# ── SIGNALS ───────────────────────────────────────────────────────────────────
-@app.get("/api/signals")
-async def get_signals():
-    try:
-        instruments = [
-            "EUR_USD", "GBP_JPY", "XAU_USD", "XAG_USD",
-            "NATGAS_USD", "WTICO_USD", "CORN_USD", "SUGAR_USD",
-            "WHEAT_USD", "SOYBN_USD", "SPX500_USD", "NAS100_USD",
-            "UK100_GBP", "DE30_EUR", "XPD_USD"
-        ]
-        results = {}
-        for inst in instruments:
-            logger.info(f"Analysing {inst}...")
-            try:
-                sig = signals.analyse(inst)
-            except Exception as e:
-                sig = {"instrument": inst, "signal": "ERROR",
-                       "error": str(e), "reasons": [str(e)], "confidence": 0}
-
-            if sig.get("signal") in ("BUY", "SELL"):
-                logger.info(f"Gemini analysing {inst}...")
-                try:
-                    ai = gemini.analyse(inst, sig)
-                    sig["ai"] = ai
-                except Exception:
-                    sig["ai"] = None
-
-                try:
-                    db.save_signal(inst, sig)
-                except Exception as e:
-                    logger.error(f"Supabase error: {e}")
-
-                alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
-                if alert_key not in _alerted:
-                    try:
-                        telegram.send_signal(inst, sig, sig.get("ai") or {})
-                        _alerted.add(alert_key)
-                        if len(_alerted) > 200:
-                            _alerted.clear()
-                    except Exception as e:
-                        logger.error(f"Telegram error: {e}")
-            else:
-                sig["ai"] = None
-
-            results[inst] = sig
-
-        return {"ok": True, "signals": results,
-                "timestamp": datetime.utcnow().isoformat()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ── FULL DASHBOARD DATA ───────────────────────────────────────────────────────
-@app.get("/api/data")
-async def get_dashboard_data():
-    """Single endpoint — returns everything the dashboard needs."""
-    try:
-        summary     = oanda.get_account_summary()
-        open_trades = oanda.get_open_trades()
-        pnl         = oanda.get_daily_pnl()
-
-        instruments = [
-            "EUR_USD", "GBP_JPY", "XAU_USD", "XAG_USD",
-            "NATGAS_USD", "WTICO_USD", "CORN_USD", "SUGAR_USD",
-            "WHEAT_USD", "SOYBN_USD", "SPX500_USD", "NAS100_USD",
-            "UK100_GBP", "DE30_EUR", "XPD_USD"
-        ]
-
-        sig_results, prices = {}, {}
-
-        open_positions_for_corr = [
-            {
-                "instrument": t.get("instrument"),
-                "direction":  "BUY" if float(t.get("currentUnits", 0)) > 0 else "SELL",
-            }
-            for t in open_trades
-        ]
-
-        for inst in instruments:
-            logger.info(f"Analysing {inst}...")
-            try:
-                sig = signals.analyse(inst)
-            except Exception as e:
-                sig = {"instrument": inst, "signal": "ERROR",
-                       "error": str(e), "reasons": [str(e)], "confidence": 0}
-
-            if sig.get("signal") in ("BUY", "SELL"):
-                logger.info(f"Gemini analysing {inst}...")
-                try:
-                    ai = gemini.analyse(inst, sig)
-                    sig["ai"] = ai
-                except Exception:
-                    sig["ai"] = None
-
-                if CORRELATION_AVAILABLE:
-                    try:
-                        sig["correlation"] = check_correlation(
-                            new_instrument=inst,
-                            new_direction=sig["signal"],
-                            open_positions=open_positions_for_corr,
-                        )
-                    except Exception as e:
-                        logger.error(f"Correlation error {inst}: {e}")
-                        sig["correlation"] = {
-                            "safe": True, "warnings": [],
-                            "block_trade": False, "summary": ""
-                        }
-                else:
-                    sig["correlation"] = {
-                        "safe": True, "warnings": [],
-                        "block_trade": False, "summary": ""
-                    }
-
-                try:
-                    db.save_signal(inst, sig)
-                except Exception:
-                    pass
-
-                alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
-                if alert_key not in _alerted:
-                    try:
-                        telegram.send_signal(inst, sig, sig.get("ai") or {})
-                        _alerted.add(alert_key)
-                    except Exception:
-                        pass
-            else:
-                sig["ai"] = None
-                sig["correlation"] = {
-                    "safe": True, "warnings": [],
-                    "block_trade": False, "summary": ""
-                }
-
-            sig_results[inst] = sig
-
-            try:
-                prices[inst] = oanda.get_live_price(inst)
-            except Exception:
-                pass
-
-        trades_data = [{
-            "id":         t.get("id"),
-            "instrument": t.get("instrument"),
-            "units":      float(t.get("currentUnits", 0)),
-            "entry":      t.get("price"),
-            "pnl":        float(t.get("unrealizedPL", 0)),
-            "sl":         t.get("stopLossOrder",   {}).get("price", "—"),
-            "tp":         t.get("takeProfitOrder", {}).get("price", "—"),
-            "direction":  "LONG" if float(t.get("currentUnits", 0)) > 0 else "SHORT",
-        } for t in open_trades]
-
-        try:
-            db.save_account_snapshot(summary)
-        except Exception:
-            pass
-
+        summary   = oanda.get_account_summary()
+        daily_pnl = oanda.get_daily_pnl()
         return {
-            "ok":          True,
-            "timestamp":   datetime.utcnow().isoformat(),
-            "environment": os.getenv("OANDA_ENVIRONMENT", "live").upper(),
-            "account": {
-                "balance":         float(summary.get("balance", 0)),
-                "nav":             float(summary.get("NAV", 0)),
-                "unrealizedPL":    float(summary.get("unrealizedPL", 0)),
-                "marginUsed":      float(summary.get("marginUsed", 0)),
-                "marginAvailable": float(summary.get("marginAvailable", 0)),
-                "openTradeCount":  int(summary.get("openTradeCount", 0)),
-                "currency":        summary.get("currency", "USD"),
-            },
-            "pnl":     pnl,
-            "trades":  trades_data,
-            "prices":  prices,
-            "signals": sig_results,
+            "account":   summary,
+            "daily_pnl": daily_pnl,
         }
     except Exception as e:
-        logger.error(f"Dashboard data error: {e}")
+        logger.error(f"/api/account error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── OPEN TRADES ───────────────────────────────────────────────────────────────
+
+@app.get("/api/signals")
+def get_signals():
+    """Scan all 16 instruments. Returns signals with confluence scores."""
+    try:
+        results = signals.scan_all()
+        fired = [r for r in results if r.get("signal") in ("BUY", "SELL")]
+        return {
+            "scanned":    len(results),
+            "fired":      len(fired),
+            "session":    signals.get_current_session(),
+            "in_session": signals.is_trading_session(),
+            "timestamp":  datetime.now(timezone.utc).isoformat(),
+            "signals":    results,
+        }
+    except Exception as e:
+        logger.error(f"/api/signals error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/prices")
+def get_prices():
+    """Live bid/ask for all 16 instruments."""
+    results = {}
+    for inst in signals.INSTRUMENTS:
+        try:
+            results[inst] = oanda.get_live_price(inst)
+        except Exception as e:
+            results[inst] = {"error": str(e)}
+    return results
+
+
 @app.get("/api/trades")
-async def get_trades():
+def get_trades():
+    """Open trades with current P&L."""
     try:
-        trades = oanda.get_open_trades()
-        return {"ok": True, "trades": trades}
+        return {"trades": oanda.get_open_trades()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── PLACE ORDER ───────────────────────────────────────────────────────────────
+
+@app.get("/api/positions")
+def get_positions():
+    try:
+        return {"positions": oanda.get_open_positions()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/place-order")
-async def place_order(order: OrderRequest):
+def place_order(req: PlaceOrderRequest):
+    """
+    Place a market order.
+    sl_price and tp_price must be ABSOLUTE PRICE LEVELS, not pip distances.
+    Use /api/calculator first to get the correct levels.
+    """
     try:
-        units  = order.units if order.direction == "BUY" else -order.units
-        result = oanda.place_order_with_levels(
-            instrument=order.instrument,
+        units = req.units if req.direction == "BUY" else -req.units
+        result = oanda.place_order(
+            instrument=req.instrument,
             units=units,
-            stop_loss=order.stop_loss,
-            take_profit=order.take_profit
+            sl_price=req.sl_price,
+            tp_price=req.tp_price,
         )
-        try:
-            db.save_trade({
-                "instrument":  order.instrument,
-                "signal":      order.direction,
-                "units":       order.units,
-                "stop_loss":   order.stop_loss,
-                "take_profit": order.take_profit,
-            })
-        except Exception:
-            pass
-        try:
-            price = oanda.get_live_price(order.instrument)
-            entry = price.get("ask" if order.direction == "BUY" else "bid", 0)
-            telegram.send_trade_confirmation(
-                order.instrument, order.direction,
-                entry, order.stop_loss, order.take_profit, order.units
-            )
-        except Exception:
-            pass
-        return {"ok": True, "result": result}
+        return {"success": True, "order": result}
+    except V20Error as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── CLOSE TRADE ───────────────────────────────────────────────────────────────
+
 @app.post("/api/close-trade")
-async def close_trade(req: CloseRequest):
+def close_trade(req: CloseTradeRequest):
     try:
         result = oanda.close_trade(req.trade_id)
-        return {"ok": True, "result": result}
+        return {"success": True, "result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── CALCULATOR ────────────────────────────────────────────────────────────────
-@app.post("/api/calculator")
-async def calculate_position(req: CalculatorRequest):
+
+@app.post("/api/breakeven")
+def breakeven(req: BreakevenRequest):
+    """
+    Move stop loss to entry price (breakeven).
+    YOUR RULE: trigger this when trade is +1R in profit.
+    """
     try:
-        result = calc.calculate(req.instrument, req.direction, req.risk_percent)
-        return {"ok": True, "calculation": result}
+        result = oanda.move_to_breakeven(req.trade_id)
+        return {"success": True, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── JOURNAL ───────────────────────────────────────────────────────────────────
-@app.get("/api/journal")
-async def get_journal():
+
+@app.post("/api/trailing-stop")
+def trailing_stop(req: TrailingStopRequest):
+    """Convert a fixed SL to a trailing stop."""
     try:
-        stats = db.get_journal_stats()
-        return {"ok": True, "stats": stats}
+        result = oanda.set_trailing_stop(
+            trade_id=req.trade_id,
+            trail_pips=req.trail_pips,
+            atr=req.atr,
+            instrument=req.instrument,
+        )
+        return {"success": True, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── NEWS ──────────────────────────────────────────────────────────────────────
-@app.get("/api/news")
-async def get_news():
+
+@app.post("/api/modify-trade")
+def modify_trade(req: ModifyTradeRequest):
     try:
-        events = get_all_upcoming_events(hours=24)
-        return {"ok": True, "news": events, "count": len(events)}
-    except Exception as e:
-        # Even on error — return the smart schedule
-        from datetime import datetime
-        now = datetime.utcnow()
-        today = now.strftime("%Y-%m-%d")
-        weekday = now.weekday()
-        fallback = [
-            {"title":"US Economic Data Window","country":"USD",
-             "impact":"High","time_utc":f"{today} 13:30 UTC",
-             "minutes":max(1,int((13.5-now.hour-now.minute/60)*60)),
-             "in_blackout":False,"source":"fallback"},
-        ]
-        if weekday == 2:
-            fallback.append({"title":"EIA Oil Inventories","country":"USD",
-                "impact":"High","time_utc":f"{today} 15:30 UTC",
-                "minutes":max(1,int((15.5-now.hour-now.minute/60)*60)),
-                "in_blackout":False,"source":"fallback"})
-        return {"ok": True, "news": fallback, "error": str(e), "source": "fallback"}
-
-@app.get("/api/news-check/{instrument}")
-async def news_check_instrument(instrument: str):
-    try:
-        result = check_news_blackout(instrument)
-        return {"ok": True, "result": result}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-# ── CORRELATION ───────────────────────────────────────────────────────────────
-@app.post("/api/check-correlation")
-async def check_correlation_endpoint(request: CorrelationCheckRequest):
-    if not CORRELATION_AVAILABLE:
-        return {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
-    positions_dicts = [
-        {"instrument": p.instrument, "direction": p.direction}
-        for p in request.open_positions
-    ]
-    result = check_correlation(
-        new_instrument=request.new_instrument,
-        new_direction=request.new_direction,
-        open_positions=positions_dicts,
-    )
-    return result
-
-@app.get("/api/correlation-map/{instrument}")
-async def correlation_map_endpoint(instrument: str):
-    if not CORRELATION_AVAILABLE:
-        return {"instrument": instrument, "correlations": []}
-    return {
-        "instrument":   instrument,
-        "correlations": get_correlation_map_for_instrument(instrument),
-    }
-
-# ── AI DEBRIEF ────────────────────────────────────────────────────────────────
-@app.post("/api/ai-debrief")
-async def ai_debrief(req: DebriefRequest):
-    try:
-        analysis = gemini.analyse_debrief(req.prompt)
-        return {"ok": True, "analysis": analysis}
+        result = oanda.modify_sl_tp(
+            trade_id=req.trade_id,
+            sl_price=req.sl_price,
+            tp_price=req.tp_price,
+            instrument=req.instrument,
+        )
+        return {"success": True, "result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── STARTUP ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/calculator")
+def calculator(
+    instrument: str,
+    direction: str,
+    account_balance: float,
+    risk_pct: float = 1.0,
+):
+    """
+    Position sizing calculator.
+    Returns: units, sl_price, tp_price, risk_amount, rr.
+    """
+    try:
+        # Get live price + ATR
+        price_data = oanda.get_live_price(instrument)
+        if not price_data:
+            raise HTTPException(status_code=400, detail=f"Could not get price for {instrument}")
+
+        candles = oanda.get_candles(instrument, "H4", count=20)
+        if len(candles) < 15:
+            raise HTTPException(status_code=400, detail="Insufficient candle data for ATR")
+
+        import pandas as pd
+        df  = pd.DataFrame(candles)
+        hl  = df["high"] - df["low"]
+        hc  = (df["high"] - df["close"].shift()).abs()
+        lc  = (df["low"]  - df["close"].shift()).abs()
+        atr = float(pd.concat([hl, hc, lc], axis=1).max(axis=1).rolling(14).mean().iloc[-1])
+
+        entry = price_data["ask"] if direction == "BUY" else price_data["bid"]
+        pip   = get_pip(instrument)
+        dp    = price_decimals(instrument)
+
+        levels = sl_tp_prices(entry, direction, atr, instrument)
+
+        # Risk amount in account currency
+        risk_amount = round(account_balance * risk_pct / 100, 2)
+
+        # Units: risk_amount / (sl_distance_in_price_units * pip_value_per_unit)
+        # For most CFDs on Oanda: 1 unit move = 1 pip value in quote currency
+        sl_dist   = abs(entry - levels["sl"])
+        units_raw = risk_amount / sl_dist if sl_dist > 0 else 0
+        units     = max(1, int(units_raw))
+
+        return {
+            "instrument":    instrument,
+            "direction":     direction,
+            "entry":         round(entry, dp),
+            "sl":            levels["sl"],
+            "tp":            levels["tp"],
+            "sl_pips":       levels["sl_pips"],
+            "tp_pips":       levels["tp_pips"],
+            "rr":            levels["rr"],
+            "atr":           round(atr, dp),
+            "pip":           pip,
+            "units":         units,
+            "risk_amount":   risk_amount,
+            "risk_pct":      risk_pct,
+            "account_balance": account_balance,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Entry point (for local dev: uvicorn api.main:app --reload)
+# ─────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("api.main:app", host="0.0.0.0", port=port, reload=False)
+    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
