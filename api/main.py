@@ -124,14 +124,11 @@ def get_signals():
 
 @app.get("/api/prices")
 def get_prices():
-    """Live bid/ask for all 16 instruments."""
-    results = {}
-    for inst in signals.INSTRUMENTS:
-        try:
-            results[inst] = oanda.get_live_price(inst)
-        except Exception as e:
-            results[inst] = {"error": str(e)}
-    return results
+    """Live bid/ask for all 16 instruments in ONE Oanda API call."""
+    try:
+        return oanda.get_all_prices(signals.INSTRUMENTS)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/trades")
@@ -295,3 +292,4 @@ def calculator(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True)
+

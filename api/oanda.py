@@ -256,3 +256,24 @@ def modify_sl_tp(trade_id: str, sl_price: float | None = None, tp_price: float |
     r = trades.TradeCRCDO(_account_id, tradeID=trade_id, data=body)
     _client.request(r)
     return r.response
+
+def get_all_prices(instruments: list[str]) -> dict:
+    """Get live prices for ALL instruments in a single Oanda API call."""
+    joined = ",".join(instruments)
+    r = pricing.PricingInfo(accountID=_account_id, params={"instruments": joined})
+    _client.request(r)
+    result = {}
+    for p in r.response.get("prices", []):
+        inst = p["instrument"]
+        bid  = float(p["bids"][0]["price"])
+        ask  = float(p["asks"][0]["price"])
+        result[inst] = {
+            "instrument":  inst,
+            "bid":         bid,
+            "ask":         ask,
+            "mid":         round((bid + ask) / 2, price_decimals(inst)),
+            "spread":      round(ask - bid, price_decimals(inst)),
+            "spread_pips": round((ask - bid) / get_pip(inst), 1),
+            "time":        p.get("time"),
+        }
+    return result
