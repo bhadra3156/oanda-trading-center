@@ -1,9 +1,16 @@
-"""Groq AI — Free trading analysis (replaces Gemini)"""
-import os, logging
+"""
+ai.py — Groq AI Trading Analyst
+Free tier: 14,400 requests/day, 100,000 tokens/day
+Model: llama-3.3-70b-versatile
+"""
+
+import os
+import logging
+
 logger = logging.getLogger(__name__)
 
-# ── Groq client (lazy-loaded so import never fails if key missing) ──────────
 _groq_client = None
+
 
 def _get_client():
     global _groq_client
@@ -12,6 +19,7 @@ def _get_client():
             from groq import Groq
             api_key = os.getenv("GROQ_API_KEY")
             if not api_key:
+                logger.warning("GROQ_API_KEY not set")
                 return None
             _groq_client = Groq(api_key=api_key)
         except Exception as e:
@@ -22,28 +30,21 @@ def _get_client():
 
 class GeminiAnalyst:
     """
-    Drop-in replacement for the original GeminiAnalyst.
-    Identical interface — same class name, same .analyse() method,
-    same return dict keys — so nothing else in the codebase needs changing.
-    Now powered by Groq (llama-3.3-70b-versatile) instead of Gemini.
+    Groq-powered analyst — same class name kept so nothing else changes.
+    Uses llama-3.3-70b-versatile (free tier).
+    Handles rate limits gracefully — never crashes the signal engine.
     """
 
-    def analyse(self, instrument, signal_data):
+    # ── SIGNAL ANALYSIS ───────────────────────────────────────────────────────
+    def analyse(self, instrument: str, signal_data: dict) -> dict:
         client = _get_client()
         if client is None:
-            return {
-                "verdict":     "UNAVAILABLE",
-                "confidence":  0,
-                "key_level":   "N/A",
-                "warning":     "N/A",
-                "summary":     "GROQ_API_KEY not set — add it to .env and Render environment variables",
-                "raw":         ""
-            }
+            return self._unavailable("GROQ_API_KEY not set in environment")
 
         prompt = f"""You are a professional forex and commodities trader.
 Analyse this H4 trading signal and give a clear verdict.
 
-Instrument: {instrument.replace('_','/')}
+Instrument: {instrument.replace('_', '/')}
 Signal: {signal_data.get('signal')}
 Price: {signal_data.get('price')}
 RSI(14): {signal_data.get('rsi')}
@@ -57,7 +58,7 @@ Stop Loss: {signal_data.get('sl')}
 Take Profit: {signal_data.get('tp')}
 Reasons: {', '.join(signal_data.get('reasons', []))}
 
-Reply ONLY in this exact format (no extra text):
+Reply ONLY in this exact format — no extra text:
 VERDICT: [STRONG BUY/BUY/WEAK BUY/WAIT/WEAK SELL/SELL/STRONG SELL]
 CONFIDENCE: [0-100]%
 KEY_LEVEL: [most important price level]
@@ -73,40 +74,97 @@ SUMMARY: [2 sentences max in plain English]"""
                         "content": (
                             "You are an expert forex and commodities trading analyst. "
                             "Always reply in the exact structured format requested. "
-                            "Be direct, specific, and concise."
+                            "Be direct, specific and concise. Real money is at stake."
                         )
                     },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+                    {"role": "user", "content": prompt}
                 ],
                 max_tokens=250,
-                temperature=0.2
+                temperature=0.2,
             )
             text = completion.choices[0].message.content or ""
             return self._parse(text)
 
         except Exception as e:
-            logger.error(f"Groq error: {e}")
-            return {
-                "verdict":    "UNAVAILABLE",
-                "confidence": 0,
-                "key_level":  "N/A",
-                "warning":    "N/A",
-                "summary":    f"AI unavailable: {str(e)}",
-                "raw":        ""
-            }
+            err = str(e)
+            # Handle rate limit gracefully — don't crash, just skip AI
+            if "429" in err or "rate_limit" in err or "tokens per day" in err:
+                logger.warning(f"Groq rate limited for {instrument} — skipping AI")
+                return {
+                    "verdict":    "RATE LIMITED",
+                    "confidence": 0,
+                    "key_level":  "N/A",
+                    "warning":    "Groq daily quota reached — resets at midnight UTC",
+                    "summary":    "AI analysis unavailable today. Signals are still valid — use technical indicators.",
+                    "raw":        err[:200],
+                }
+            logger.error(f"Groq error for {instrument}: {err[:200]}")
+            return self._unavailable(err[:150])
 
-    def _parse(self, text):
-        """Parse Groq response — identical output format to original Gemini parser."""
+    # ── AI PERFORMANCE DEBRIEF ─────────────────────────────────────────────────
+    def analyse_debrief(self, prompt: str) -> str:
+        """
+        Analyse a trader's recent trade history and return coaching advice.
+        Called by /api/ai-debrief endpoint.
+        """
+        client = _get_client()
+        if client is None:
+            return "GROQ_API_KEY not set — add it to Render environment variables."
+
+        try:
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an expert trading performance coach. "
+                            "Analyse the trader's history honestly. "
+                            "Be direct, specific and actionable. "
+                            "Format your response clearly with numbered sections."
+                        )
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=500,
+                temperature=0.4,
+            )
+            return completion.choices[0].message.content or "No analysis returned."
+
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "rate_limit" in err:
+                return (
+                    "⚠️ Groq daily quota reached.\n\n"
+                    "Your free tier allows 100,000 tokens/day.\n"
+                    "AI debrief will be available again after midnight UTC.\n\n"
+                    "In the meantime, review your journal manually:\n"
+                    "• Which instruments have the highest win rate?\n"
+                    "• Are you trading during London/NY sessions only?\n"
+                    "• Are you respecting your 1% risk rule?"
+                )
+            return f"AI debrief unavailable: {err[:200]}"
+
+    # ── HELPERS ───────────────────────────────────────────────────────────────
+    def _unavailable(self, reason: str = "") -> dict:
+        return {
+            "verdict":    "UNAVAILABLE",
+            "confidence": 0,
+            "key_level":  "N/A",
+            "warning":    "N/A",
+            "summary":    f"AI unavailable: {reason}" if reason else "AI unavailable",
+            "raw":        "",
+        }
+
+    def _parse(self, text: str) -> dict:
+        """Parse structured Groq response into a dict."""
         result = {
             "verdict":    "UNKNOWN",
             "confidence": 0,
             "key_level":  "N/A",
             "warning":    "N/A",
             "summary":    text[:300],
-            "raw":        text
+            "raw":        text,
         }
         for line in text.strip().split("\n"):
             line = line.strip()
@@ -117,7 +175,7 @@ SUMMARY: [2 sentences max in plain English]"""
                     result["confidence"] = int(
                         line.replace("CONFIDENCE:", "").replace("%", "").strip()
                     )
-                except Exception:
+                except ValueError:
                     pass
             elif line.startswith("KEY_LEVEL:"):
                 result["key_level"] = line.replace("KEY_LEVEL:", "").strip()
@@ -126,20 +184,3 @@ SUMMARY: [2 sentences max in plain English]"""
             elif line.startswith("SUMMARY:"):
                 result["summary"] = line.replace("SUMMARY:", "").strip()
         return result
-    def analyse_debrief(self, prompt: str) -> str:
-    if not self.api_key:
-        return "Gemini API key not set"
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400}
-    }
-    try:
-        req = urllib.request.Request(
-            self.url + self.api_key,
-            data=json.dumps(payload).encode(),
-            headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            result = json.loads(r.read())
-            return result["candidates"][0]["content"]["parts"][0]["text"]
-    except Exception as e:
-        return f"Analysis unavailable: {e}"

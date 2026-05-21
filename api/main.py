@@ -374,9 +374,25 @@ async def get_journal():
 async def get_news():
     try:
         events = get_all_upcoming_events(hours=24)
-        return {"ok": True, "news": events}
+        return {"ok": True, "news": events, "count": len(events)}
     except Exception as e:
-        return {"ok": True, "news": [], "error": str(e)}
+        # Even on error — return the smart schedule
+        from datetime import datetime
+        now = datetime.utcnow()
+        today = now.strftime("%Y-%m-%d")
+        weekday = now.weekday()
+        fallback = [
+            {"title":"US Economic Data Window","country":"USD",
+             "impact":"High","time_utc":f"{today} 13:30 UTC",
+             "minutes":max(1,int((13.5-now.hour-now.minute/60)*60)),
+             "in_blackout":False,"source":"fallback"},
+        ]
+        if weekday == 2:
+            fallback.append({"title":"EIA Oil Inventories","country":"USD",
+                "impact":"High","time_utc":f"{today} 15:30 UTC",
+                "minutes":max(1,int((15.5-now.hour-now.minute/60)*60)),
+                "in_blackout":False,"source":"fallback"})
+        return {"ok": True, "news": fallback, "error": str(e), "source": "fallback"}
 
 @app.get("/api/news-check/{instrument}")
 async def news_check_instrument(instrument: str):
