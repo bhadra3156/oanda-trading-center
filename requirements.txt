@@ -1,5 +1,6 @@
 fastapi==0.109.0
 uvicorn==0.27.0
-oandapyV20
+oandapyV20==0.7.2
+six
 python-dotenv
 requests
