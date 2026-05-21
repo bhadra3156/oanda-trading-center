@@ -126,3 +126,20 @@ SUMMARY: [2 sentences max in plain English]"""
             elif line.startswith("SUMMARY:"):
                 result["summary"] = line.replace("SUMMARY:", "").strip()
         return result
+    def analyse_debrief(self, prompt: str) -> str:
+    if not self.api_key:
+        return "Gemini API key not set"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400}
+    }
+    try:
+        req = urllib.request.Request(
+            self.url + self.api_key,
+            data=json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            result = json.loads(r.read())
+            return result["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        return f"Analysis unavailable: {e}"
