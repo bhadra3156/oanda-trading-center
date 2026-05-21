@@ -276,4 +276,5 @@ def get_all_upcoming_events(hours=24):
                 "source":      event.get("source",""),
             })
     result.sort(key=lambda x: x["minutes"])
-    return result
+    return result#   v 3  
+ 
