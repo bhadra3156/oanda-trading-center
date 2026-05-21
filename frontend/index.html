@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="stylesheet" href="correlation.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — Oanda Trading Center</title>
@@ -237,7 +236,9 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
     <div class="sec-title">🧠 H4 AI Signals — Gemini Analysis</div>
     <div class="sec-badge gold" id="sig-summary">Scanning 15 instruments...</div>
   </div>
-  <div class="sig-grid" id="sig-grid"></div>
+  <div class="sig-grid" id="sig-grid">
+    <!-- Loading skeletons -->
+  </div>
 
   <!-- OPEN POSITIONS -->
   <div class="sec-hdr">
@@ -255,8 +256,6 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
   <div class="modal">
     <div class="modal-title" id="modal-title">Confirm Trade</div>
     <div class="modal-rows" id="modal-rows"></div>
-    <!-- ▼ CORRELATION WARNINGS injected here before confirm button ▼ -->
-    <div id="corr-warnings"></div>
     <div class="modal-warn">⚠️ This places a REAL trade on your live Oanda account. Verify on TradingView first.</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal()">Cancel</button>
@@ -272,13 +271,9 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 </div>
 
 <script>
-/* ── API BASE — used by both page scripts AND correlation.js ──── */
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8000'
   : 'https://oanda-trading-center.onrender.com';
-
-/* Keep legacy API alias so nothing breaks */
-const API = API_BASE;
 
 const INSTRUMENTS = [
   {id:'EUR_USD',name:'EUR/USD',cat:'FX'},
@@ -298,7 +293,7 @@ const INSTRUMENTS = [
   {id:'DE30_EUR',name:'DE30',cat:'Index'},
 ];
 
-let pendingTrade  = null;
+let pendingTrade = null;
 let accountBalance = 0;
 
 function fmt(n,d=2){return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}
@@ -314,7 +309,7 @@ function fmtP(inst,p){
   return p.toFixed(5);
 }
 
-function calcUnits(balance,marginAvail,sl_pips,inst){
+function calcUnits(balance, marginAvail, sl_pips, inst){
   if(!sl_pips||sl_pips<=0)return 100;
   const risk=balance*0.01;
   const pipVal=inst.includes('XAU')?1:10;
@@ -322,7 +317,7 @@ function calcUnits(balance,marginAvail,sl_pips,inst){
   return Math.max(100,Math.min(raw,Math.floor(marginAvail*3)));
 }
 
-/* ── RENDER SKELETON LOADING CARDS ──────────────────────────────── */
+// ── RENDER SKELETON LOADING CARDS ────────────────────────────────────────────
 function renderSkeletons(){
   const grid=document.getElementById('sig-grid');
   grid.innerHTML=INSTRUMENTS.map((inst,i)=>`
@@ -339,8 +334,8 @@ function renderSkeletons(){
   `).join('');
 }
 
-/* ── RENDER SIGNAL CARDS ─────────────────────────────────────────── */
-function renderSignals(signals,account){
+// ── RENDER SIGNAL CARDS ───────────────────────────────────────────────────────
+function renderSignals(signals, account){
   const grid=document.getElementById('sig-grid');
   const bal=account?.balance||0;
   const mar=account?.marginAvailable||0;
@@ -356,11 +351,7 @@ function renderSignals(signals,account){
   grid.innerHTML=ordered.map((inst,idx)=>{
     const s=signals[inst.id]||{signal:'WAIT',reasons:['No data']};
     const isBuy=s.signal==='BUY', isSell=s.signal==='SELL', isWait=!isBuy&&!isSell;
-
-  
-    const isNews = s.news_blackout;
-const isCB   = s.circuit_breaker;
-const cc     = isBuy?'buy':isSell?'sell':'wait';
+    const cc=isBuy?'buy':isSell?'sell':'wait';
     const conf=s.confidence||0;
     const confC=conf>70?'h':conf>40?'m':'l';
     const units=(!isWait&&bal>0)?calcUnits(bal,mar,s.sl_pips,inst.id):0;
@@ -379,7 +370,7 @@ const cc     = isBuy?'buy':isSell?'sell':'wait';
     const aiHtml=ai.summary?`
       <div class="sc-ai">
         <div class="sc-ai-hdr">
-          <span class="sc-ai-lbl">GROQ AI</span>
+          <span class="sc-ai-lbl">Gemini AI</span>
           <span class="sc-ai-verdict ${aiClass}">${aiVerdict||'—'}</span>
         </div>
         <div class="sc-ai-text">${(ai.summary||'').substring(0,120)}${(ai.summary||'').length>120?'…':''}</div>
@@ -398,7 +389,7 @@ const cc     = isBuy?'buy':isSell?'sell':'wait';
       </div>`:'';
 
     const tradeHtml=(!isWait&&s.entry)?`
-      <button class="sc-trade ${cc}" data-inst="${inst.id}" data-name="${inst.name}" data-dir="${s.signal}" data-entry="${s.entry}" data-sl="${s.sl}" data-tp="${s.tp}" data-units="${units}" onclick="handleTradeClick(this)">
+      <button class="sc-trade ${cc}" onclick="openTradeModal('${inst.id}','${inst.name}','${s.signal}',${s.entry},${s.sl},${s.tp},${units})">
         ${isBuy?'▲ BUY':'▼ SELL'} ${inst.name}
       </button>`:'';
 
@@ -407,11 +398,9 @@ const cc     = isBuy?'buy':isSell?'sell':'wait';
     return `<div class="scard ${cc}" style="animation-delay:${idx*0.04}s">
       <div class="sc-top">
         <div><div class="sc-pair">${inst.name}</div><div class="sc-cat">${inst.cat}</div></div>
-        <span class="sc-badge ${cc}">${isCB?'⛔ BLOCKED':isNews?'📰 NEWS':isBuy?'▲ BUY':isSell?'▼ SELL':'— WAIT'}</span>${s.signal==='BUY'?'▲ BUY':s.signal==='SELL'?'▼ SELL':'— WAIT'}</span>
+        <span class="sc-badge ${cc}">${s.signal==='BUY'?'▲ BUY':s.signal==='SELL'?'▼ SELL':'— WAIT'}</span>
       </div>
       <div class="sc-price">${fmtP(inst.id,s.price)}</div>
-      ${isNews?`<div style="background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.25);border-radius:6px;padding:8px 10px;margin-bottom:8px"><div style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:3px">📰 NEWS BLACKOUT</div><div style="font-size:11px;color:var(--muted2)">${s.news_event||'High-impact event'}</div><div style="font-size:10px;color:var(--gold);font-family:var(--mono);margin-top:2px">${s.news_minutes>0?'In '+s.news_minutes+' min':'Just released'} · ${s.news_time||'—'} UTC · Wait for volatility to settle</div></div>`:''}
-      
       ${levelsHtml}
       <div class="sc-indicators">
         ${s.rsi?`<span class="sc-ind rsi">RSI ${s.rsi}</span>`:''}
@@ -429,25 +418,7 @@ const cc     = isBuy?'buy':isSell?'sell':'wait';
   }).join('');
 }
 
-/* ── TRADE BUTTON CLICK — runs correlation check first ──────────── */
-async function handleTradeClick(btn) {
-  const instId    = btn.dataset.inst;
-  const instName  = btn.dataset.name;
-  const direction = btn.dataset.dir;
-  const entry     = parseFloat(btn.dataset.entry);
-  const sl        = parseFloat(btn.dataset.sl);
-  const tp        = parseFloat(btn.dataset.tp);
-  const units     = parseInt(btn.dataset.units);
-
-  /* Run correlation check before showing modal */
-  await correlationChecker.loadOpenPositions();
-  const corrResult = await correlationChecker.check(instId, direction);
-
-  /* Populate modal */
-  openTradeModal(instId, instName, direction, entry, sl, tp, units, corrResult);
-}
-
-/* ── RENDER POSITIONS ────────────────────────────────────────────── */
+// ── RENDER POSITIONS ──────────────────────────────────────────────────────────
 function renderPositions(trades){
   const grid=document.getElementById('pos-grid');
   const count=document.getElementById('pos-count');
@@ -481,8 +452,8 @@ function renderPositions(trades){
   }).join('');
 }
 
-/* ── ACCOUNT ─────────────────────────────────────────────────────── */
-function renderAccount(acc,pnl){
+// ── ACCOUNT ───────────────────────────────────────────────────────────────────
+function renderAccount(acc, pnl){
   accountBalance=parseFloat(acc.balance||0);
   const nav=parseFloat(acc.NAV||acc.nav||0);
   const upl=parseFloat(acc.unrealizedPL||0);
@@ -510,14 +481,12 @@ function renderAccount(acc,pnl){
   document.getElementById('a-ts').textContent=new Date().toUTCString().split(' ')[4]+' UTC';
 }
 
-/* ── TRADE MODAL ─────────────────────────────────────────────────── */
-function openTradeModal(instId, instName, direction, entry, sl, tp, units, corrResult){
+// ── TRADE MODAL ───────────────────────────────────────────────────────────────
+function openTradeModal(instId, instName, direction, entry, sl, tp, units){
   pendingTrade={instId,instName,direction,entry,sl,tp,units};
   const isBuy=direction==='BUY';
-
   document.getElementById('modal-title').innerHTML=
     `${isBuy?'🟢':'🔴'} Confirm ${direction} — ${instName}`;
-
   document.getElementById('modal-rows').innerHTML=`
     <div class="modal-row"><span class="modal-row-lbl">Instrument</span><span class="modal-row-val" style="color:var(--gold)">${instName}</span></div>
     <div class="modal-row"><span class="modal-row-lbl">Direction</span><span class="modal-row-val" style="color:${isBuy?'var(--green)':'var(--red)'}">${direction}</span></div>
@@ -527,30 +496,13 @@ function openTradeModal(instId, instName, direction, entry, sl, tp, units, corrR
     <div class="modal-row"><span class="modal-row-lbl">Take Profit</span><span class="modal-row-val" style="color:var(--green)">${fmtP(instId,tp)}</span></div>
     <div class="modal-row"><span class="modal-row-lbl">Risk (1%)</span><span class="modal-row-val" style="color:var(--cyan)">$${fmt(accountBalance*0.01)}</span></div>
   `;
-
-  /* ▼ Render correlation warnings and apply block state ▼ */
-  const corrEl  = document.getElementById('corr-warnings');
-  const confirmBtn = document.getElementById('modal-ok');
-  correlationChecker.renderInModal(corrResult, corrEl);
-  correlationChecker.applyBlockState(corrResult, confirmBtn);
-
-  const ok = confirmBtn;
-  if (!corrResult?.block_trade) {
-    /* Only set text/class if not blocked (applyBlockState handles the blocked case) */
-    ok.textContent = `CONFIRM ${direction}`;
-    ok.className   = `modal-ok ${direction.toLowerCase()}`;
-  }
-
+  const ok=document.getElementById('modal-ok');
+  ok.textContent=`CONFIRM ${direction}`;
+  ok.className=`modal-ok ${direction.toLowerCase()}`;
   document.getElementById('modal').classList.add('show');
 }
 
-function closeModal(){
-  document.getElementById('modal').classList.remove('show');
-  /* Reset confirm button state when modal closes */
-  const ok = document.getElementById('modal-ok');
-  ok.disabled = false;
-  ok.classList.remove('btn-blocked');
-}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
 
 async function executeTrade(){
   if(!pendingTrade)return;
@@ -580,7 +532,7 @@ async function closePosition(tradeId, instName){
   }catch(e){showToast('error','❌ '+e.message);}
 }
 
-/* ── TOAST ───────────────────────────────────────────────────────── */
+// ── TOAST ─────────────────────────────────────────────────────────────────────
 function showToast(type,msg){
   const t=document.getElementById('toast');
   document.getElementById('toast-msg').textContent=msg;
@@ -588,7 +540,7 @@ function showToast(type,msg){
   setTimeout(()=>t.classList.remove('show'),5000);
 }
 
-/* ── NEWS ────────────────────────────────────────────────────────── */
+// ── NEWS ──────────────────────────────────────────────────────────────────────
 async function fetchNews(){
   try{
     const r=await fetch(`${API}/api/news`);
@@ -601,7 +553,7 @@ async function fetchNews(){
   }catch(e){}
 }
 
-/* ── MAIN FETCH ──────────────────────────────────────────────────── */
+// ── MAIN FETCH ────────────────────────────────────────────────────────────────
 async function fetchAll(){
   const scanDot=document.getElementById('scan-dot');
   const scanLbl=document.getElementById('scan-label');
@@ -609,10 +561,12 @@ async function fetchAll(){
   scanLbl.textContent='Scanning H4...';
 
   try{
+    // Fetch account fast
     const accR=await fetch(`${API}/api/account`);
     const accD=await accR.json();
     if(accD.ok) renderAccount(accD.account, accD.pnl);
 
+    // Fetch trades fast
     const trR=await fetch(`${API}/api/trades`);
     const trD=await trR.json();
     if(trD.ok){
@@ -627,7 +581,8 @@ async function fetchAll(){
       })));
     }
 
-    scanLbl.textContent='Running GROQ AI...';
+    // Fetch signals (slower — includes Gemini AI)
+    scanLbl.textContent='Running Gemini AI...';
     const sigR=await fetch(`${API}/api/signals`);
     const sigD=await sigR.json();
     if(sigD.ok&&accD.ok){
@@ -646,14 +601,11 @@ async function fetchAll(){
   }
 }
 
-/* ── STARTUP ─────────────────────────────────────────────────────── */
+// ── STARTUP ───────────────────────────────────────────────────────────────────
 renderSkeletons();
 fetchNews();
 fetchAll();
-setInterval(fetchAll, 300000);
+setInterval(fetchAll, 300000); // 5 minutes
 </script>
-
-<!-- correlation.js must load AFTER the API_BASE const is defined above -->
-<script src="correlation.js"></script>
 </body>
 </html>
