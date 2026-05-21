@@ -7,7 +7,7 @@ All endpoints for the trading dashboard
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import os
 import logging
 from datetime import datetime
@@ -21,6 +21,7 @@ from api.ai import GeminiAnalyst
 from api.telegram import TelegramBot
 from api.supabase_client import SupabaseClient
 from api.calculator import PositionCalculator
+from api.correlation import check_correlation, get_correlation_map_for_instrument
 
 # ── SETUP ─────────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
@@ -48,10 +49,10 @@ _alerted = set()
 
 # ── MODELS ────────────────────────────────────────────────────────────────────
 class OrderRequest(BaseModel):
-    instrument: str
-    direction:  str        # BUY or SELL
-    units:      int
-    stop_loss:  float
+    instrument:  str
+    direction:   str        # BUY or SELL
+    units:       int
+    stop_loss:   float
     take_profit: float
 
 class CalculatorRequest(BaseModel):
@@ -61,6 +62,15 @@ class CalculatorRequest(BaseModel):
 
 class CloseRequest(BaseModel):
     trade_id: str
+
+class OpenPosition(BaseModel):
+    instrument: str
+    direction:  str   # "BUY", "SELL", "LONG", or "SHORT"
+
+class CorrelationCheckRequest(BaseModel):
+    new_instrument: str
+    new_direction:  str
+    open_positions: List[OpenPosition]
 
 # ── HEALTH ────────────────────────────────────────────────────────────────────
 @app.get("/")
@@ -166,6 +176,15 @@ async def get_dashboard_data():
 
         sig_results, prices = {}, {}
 
+        # Build open_positions list for correlation checks
+        open_positions_for_corr = [
+            {
+                "instrument": t.get("instrument"),
+                "direction":  "BUY" if float(t.get("currentUnits", 0)) > 0 else "SELL",
+            }
+            for t in open_trades
+        ]
+
         for inst in instruments:
             logger.info(f"Analysing {inst}...")
             try:
@@ -178,10 +197,24 @@ async def get_dashboard_data():
                 logger.info(f"Gemini analysing {inst}...")
                 ai = gemini.analyse(inst, sig)
                 sig["ai"] = ai
+
+                # ── Correlation check attached to each signal ─────────────
+                try:
+                    corr = check_correlation(
+                        new_instrument=inst,
+                        new_direction=sig["signal"],
+                        open_positions=open_positions_for_corr,
+                    )
+                    sig["correlation"] = corr
+                except Exception as e:
+                    logger.error(f"Correlation check error for {inst}: {e}")
+                    sig["correlation"] = {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
+
                 try:
                     db.save_signal(inst, sig)
                 except Exception:
                     pass
+
                 alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
                 if alert_key not in _alerted:
                     try:
@@ -191,6 +224,7 @@ async def get_dashboard_data():
                         pass
             else:
                 sig["ai"] = None
+                sig["correlation"] = {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
 
             sig_results[inst] = sig
 
@@ -207,7 +241,7 @@ async def get_dashboard_data():
             "pnl":        float(t.get("unrealizedPL", 0)),
             "sl":         t.get("stopLossOrder",   {}).get("price", "—"),
             "tp":         t.get("takeProfitOrder", {}).get("price", "—"),
-            "direction":  "LONG" if float(t.get("currentUnits",0))>0 else "SHORT",
+            "direction":  "LONG" if float(t.get("currentUnits", 0)) > 0 else "SHORT",
         } for t in open_trades]
 
         # Save account snapshot
@@ -219,7 +253,7 @@ async def get_dashboard_data():
         return {
             "ok":          True,
             "timestamp":   datetime.utcnow().isoformat(),
-            "environment": os.getenv("OANDA_ENVIRONMENT","live").upper(),
+            "environment": os.getenv("OANDA_ENVIRONMENT", "live").upper(),
             "account": {
                 "balance":         float(summary.get("balance", 0)),
                 "nav":             float(summary.get("NAV", 0)),
@@ -272,7 +306,7 @@ async def place_order(order: OrderRequest):
         # Telegram confirmation
         try:
             price = oanda.get_live_price(order.instrument)
-            entry = price.get("ask" if order.direction=="BUY" else "bid", 0)
+            entry = price.get("ask" if order.direction == "BUY" else "bid", 0)
             telegram.send_trade_confirmation(
                 order.instrument, order.direction,
                 entry, order.stop_loss, order.take_profit, order.units
@@ -322,6 +356,38 @@ async def get_news():
         return {"ok": True, "news": high[:10]}
     except Exception as e:
         return {"ok": True, "news": [], "error": str(e)}
+
+# ── CORRELATION ───────────────────────────────────────────────────────────────
+@app.post("/api/check-correlation")
+async def check_correlation_endpoint(request: CorrelationCheckRequest):
+    """
+    Called before the trade confirmation modal appears.
+    Body: { new_instrument, new_direction, open_positions: [{instrument, direction}] }
+    Returns: { safe, warnings, block_trade, summary }
+    """
+    positions_dicts = [
+        {"instrument": p.instrument, "direction": p.direction}
+        for p in request.open_positions
+    ]
+    result = check_correlation(
+        new_instrument=request.new_instrument,
+        new_direction=request.new_direction,
+        open_positions=positions_dicts,
+    )
+    return result
+
+
+@app.get("/api/correlation-map/{instrument}")
+async def correlation_map_endpoint(instrument: str):
+    """
+    Returns all instruments correlated with the given instrument.
+    Used to populate the correlation map panel in the frontend.
+    """
+    return {
+        "instrument":   instrument,
+        "correlations": get_correlation_map_for_instrument(instrument),
+    }
+
 
 if __name__ == "__main__":
     import uvicorn

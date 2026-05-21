@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="stylesheet" href="correlation.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Trading Calculator — Oanda Trading Center</title>
@@ -600,7 +601,7 @@ nav {
   background: var(--bg3);
   border-radius: 8px;
   padding: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 .modal-row {
   display: flex;
@@ -823,9 +824,7 @@ nav {
         <div class="panel-body">
 
           <!-- INSTRUMENTS -->
-          <div class="instrument-grid" id="inst-grid">
-            <!-- Populated by JS -->
-          </div>
+          <div class="instrument-grid" id="inst-grid"></div>
 
           <!-- DIRECTION -->
           <div class="dir-toggle">
@@ -998,6 +997,8 @@ nav {
   <div class="modal">
     <div class="modal-title" id="modal-title">Confirm Trade</div>
     <div class="modal-details" id="modal-details"></div>
+    <!-- ▼ CORRELATION WARNINGS injected here before confirm button ▼ -->
+    <div id="corr-warnings"></div>
     <div class="modal-warning">
       ⚠️ This will place a REAL trade on your live Oanda account. Make sure you have reviewed the setup on TradingView first.
     </div>
@@ -1015,10 +1016,13 @@ nav {
 </div>
 
 <script>
-// ─── CONFIG ──────────────────────────────────────────────────────────────────
-const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+/* ── API BASE — used by both page scripts AND correlation.js ──── */
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8000'
   : 'https://oanda-trading-center.onrender.com';
+
+/* Keep legacy API alias so nothing breaks */
+const API = API_BASE;
 
 const INSTRUMENTS = [
   {id:'EUR_USD', name:'EUR/USD', cat:'FX'},
@@ -1047,7 +1051,7 @@ let state = {
   result:     null,
 };
 
-// ─── INIT ─────────────────────────────────────────────────────────────────────
+/* ─── HELPERS ─────────────────────────────────────────────────── */
 function fmt(n, d=2) {
   return Number(n).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
 }
@@ -1064,6 +1068,7 @@ function fmtP(inst, p) {
   return p.toFixed(5);
 }
 
+/* ─── INSTRUMENT GRID ─────────────────────────────────────────── */
 function buildInstrumentGrid() {
   const grid = document.getElementById('inst-grid');
   grid.innerHTML = INSTRUMENTS.map(i => `
@@ -1121,7 +1126,7 @@ function updateRiskAmount() {
   }
 }
 
-// ─── FETCH DATA ───────────────────────────────────────────────────────────────
+/* ─── FETCH DATA ──────────────────────────────────────────────── */
 async function fetchAccount() {
   try {
     const r = await fetch(`${API}/api/account`);
@@ -1175,9 +1180,9 @@ async function fetchTrades() {
       return;
     }
     list.innerHTML = trades.map(t => {
-      const pnl   = float(t.unrealizedPL || 0);
-      const units = Math.abs(float(t.currentUnits || 0));
-      const dir   = float(t.currentUnits || 0) > 0 ? 'LONG' : 'SHORT';
+      const pnl   = fl(t.unrealizedPL || 0);
+      const units = Math.abs(fl(t.currentUnits || 0));
+      const dir   = fl(t.currentUnits || 0) > 0 ? 'LONG' : 'SHORT';
       const inst  = (t.instrument||'').replace('_','/');
       return `<div class="trade-mini-item">
         <div>
@@ -1190,7 +1195,7 @@ async function fetchTrades() {
   } catch(e) { console.error(e); }
 }
 
-function float(v) { try { return parseFloat(v) || 0; } catch { return 0; } }
+function fl(v) { try { return parseFloat(v) || 0; } catch { return 0; } }
 
 async function fetchNews() {
   try {
@@ -1211,7 +1216,7 @@ async function fetchNews() {
   } catch(e) {}
 }
 
-// ─── CALCULATE ────────────────────────────────────────────────────────────────
+/* ─── CALCULATE ───────────────────────────────────────────────── */
 async function calculate() {
   if (!state.instrument) {
     showToast('error', '⚠️ Please select an instrument first');
@@ -1258,7 +1263,6 @@ function renderResults(c) {
   document.getElementById('r-tp-p').textContent   = c.tp_pips + 'p';
   document.getElementById('r-margin').textContent = '$' + fmt(c.margin_required);
 
-  // Trade button
   const btn = document.getElementById('trade-btn');
   btn.disabled = false;
   if (isBuy) {
@@ -1269,10 +1273,7 @@ function renderResults(c) {
     btn.innerHTML = `▼ SELL ${c.units.toLocaleString()} units of ${state.instrument.replace('_','/')}`;
   }
 
-  // Show results
   document.getElementById('results').classList.add('show');
-
-  // Fetch Gemini analysis
   fetchSignalForInstrument();
 }
 
@@ -1298,8 +1299,8 @@ async function fetchSignalForInstrument() {
   } catch(e) {}
 }
 
-// ─── TRADE EXECUTION ──────────────────────────────────────────────────────────
-function confirmTrade() {
+/* ─── TRADE EXECUTION ─────────────────────────────────────────── */
+async function confirmTrade() {
   if (!state.result) return;
   const c   = state.result;
   const dir = state.direction;
@@ -1343,15 +1344,28 @@ function confirmTrade() {
     </div>
   `;
 
+  /* ▼ Run correlation check and render warnings inside modal ▼ */
+  await correlationChecker.loadOpenPositions();
+  const corrResult = await correlationChecker.check(state.instrument, dir);
+  const corrEl     = document.getElementById('corr-warnings');
   const confirmBtn = document.getElementById('modal-confirm');
-  confirmBtn.textContent = `CONFIRM ${dir}`;
-  confirmBtn.className   = `modal-confirm ${dir.toLowerCase()}`;
+  correlationChecker.renderInModal(corrResult, corrEl);
+  correlationChecker.applyBlockState(corrResult, confirmBtn);
+
+  if (!corrResult?.block_trade) {
+    confirmBtn.textContent = `CONFIRM ${dir}`;
+    confirmBtn.className   = `modal-confirm ${dir.toLowerCase()}`;
+  }
 
   document.getElementById('modal').classList.add('show');
 }
 
 function closeModal() {
   document.getElementById('modal').classList.remove('show');
+  /* Reset confirm button state when modal closes */
+  const confirmBtn = document.getElementById('modal-confirm');
+  confirmBtn.disabled = false;
+  confirmBtn.classList.remove('btn-blocked');
 }
 
 async function executeTrade() {
@@ -1392,7 +1406,7 @@ async function executeTrade() {
   }
 }
 
-// ─── TOAST ────────────────────────────────────────────────────────────────────
+/* ─── TOAST ───────────────────────────────────────────────────── */
 function showToast(type, msg) {
   const toast = document.getElementById('toast');
   document.getElementById('toast-msg').textContent = msg;
@@ -1400,7 +1414,7 @@ function showToast(type, msg) {
   setTimeout(() => toast.classList.remove('show'), 5000);
 }
 
-// ─── STARTUP ─────────────────────────────────────────────────────────────────
+/* ─── STARTUP ─────────────────────────────────────────────────── */
 buildInstrumentGrid();
 setDirection('BUY');
 fetchAccount();
@@ -1408,10 +1422,12 @@ fetchPrices();
 fetchTrades();
 fetchNews();
 
-// Auto-refresh prices every 15s
 setInterval(fetchPrices, 15000);
 setInterval(fetchAccount, 30000);
 setInterval(fetchTrades, 30000);
 </script>
+
+<!-- correlation.js must load AFTER the API_BASE const is defined above -->
+<script src="correlation.js"></script>
 </body>
 </html>

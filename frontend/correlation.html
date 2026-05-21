@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Correlation Map — Oanda Trading Center</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0a0b;
+    --bg1:      #111113;
+    --bg2:      #18181c;
+    --bg3:      #1e1e24;
+    --border:   #2a2a32;
+    --text:     #e2e2e8;
+    --muted:    #6b6b7e;
+    --dim:      #3a3a46;
+
+    --red:      #e24b4a;
+    --red-bg:   rgba(226,75,74,0.1);
+    --red-b:    rgba(226,75,74,0.3);
+
+    --amber:    #ef9f27;
+    --amber-bg: rgba(239,159,39,0.1);
+    --amber-b:  rgba(239,159,39,0.3);
+
+    --blue:     #378add;
+    --blue-bg:  rgba(55,138,221,0.1);
+    --blue-b:   rgba(55,138,221,0.3);
+
+    --green:    #3bb06b;
+    --green-bg: rgba(59,176,107,0.1);
+    --green-b:  rgba(59,176,107,0.3);
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* Nav — matches your existing nav */
+  nav {
+    background: var(--bg1);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    height: 44px;
+    gap: 0;
+  }
+  nav .brand {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text);
+    text-decoration: none;
+    margin-right: 24px;
+    text-transform: uppercase;
+  }
+  nav a {
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 0 12px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  nav a:hover { color: var(--text); }
+  nav a.active { color: var(--text); border-bottom-color: var(--blue); }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  .page-header { margin-bottom: 28px; }
+  .page-header h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .page-header p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    padding: 14px 16px;
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Instrument selector */
+  .inst-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .inst-btn {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .inst-btn:hover { border-color: var(--dim); color: var(--text); background: var(--bg3); }
+  .inst-btn.active { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+  .inst-btn .cat-dot {
+    display: block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    margin: 0 auto 4px;
+  }
+
+  /* Main layout */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+  }
+  @media (max-width: 800px) {
+    .main-layout { grid-template-columns: 1fr; }
+  }
+
+  /* Correlation matrix */
+  .matrix-card {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-header h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .matrix-wrap { overflow-x: auto; padding: 4px; }
+  table.matrix {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  table.matrix th {
+    padding: 8px 6px;
+    text-align: center;
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+  table.matrix th:first-child { text-align: left; padding-left: 14px; min-width: 90px; }
+  table.matrix td {
+    padding: 5px 3px;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    transition: filter 0.1s;
+  }
+  table.matrix td:first-child {
+    text-align: left;
+    padding-left: 14px;
+    color: var(--text);
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .cell { 
+    width: 32px; height: 22px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .cell:hover { transform: scale(1.15); z-index: 10; position: relative; }
+  .cell.c-vs  { background: rgba(226,75,74,0.85);  color: #fff; }
+  .cell.c-s   { background: rgba(239,159,39,0.75); color: #fff; }
+  .cell.c-m   { background: rgba(55,138,221,0.6);  color: #fff; }
+  .cell.c-n   { background: var(--bg3); color: var(--dim); }
+  .cell.c-inv { background: rgba(59,176,107,0.6);  color: #fff; }
+  .cell.c-self{ background: var(--bg3); color: var(--muted); }
+
+  /* Detail panel */
+  .detail-card {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+  }
+  .detail-placeholder {
+    padding: 32px 18px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  .detail-content { display: none; }
+  .detail-content.visible { display: block; }
+  .detail-inst {
+    padding: 16px 18px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text);
+  }
+  .detail-group {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-group:last-child { border-bottom: none; }
+  .detail-group-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .detail-group-label.danger  { color: var(--red); }
+  .detail-group-label.warning { color: var(--amber); }
+  .detail-group-label.info    { color: var(--blue); }
+  .detail-peers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+  .detail-peer {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px 9px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.04em;
+  }
+  .detail-reason { font-size: 11px; color: var(--muted); line-height: 1.6; }
+
+  /* Live check widget */
+  .check-card {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin-top: 20px;
+  }
+  .check-card h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .check-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  .check-field label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .check-field select, .check-field button {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 9px 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+  }
+  .check-field select:focus, .check-field button:hover { border-color: var(--blue); }
+  .check-field button { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-b); }
+  .check-result { margin-top: 14px; }
+  .check-result .warn-block {
+    border-radius: 8px;
+    padding: 11px 13px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .check-result .warn-block.danger  { background: var(--red-bg);   border: 1px solid var(--red-b);   color: var(--red); }
+  .check-result .warn-block.warning { background: var(--amber-bg); border: 1px solid var(--amber-b); color: var(--amber); }
+  .check-result .warn-block.info    { background: var(--blue-bg);  border: 1px solid var(--blue-b);  color: var(--blue); }
+  .check-result .warn-block.safe    { background: var(--green-bg); border: 1px solid var(--green-b); color: var(--green); }
+  .warn-block strong { display: block; margin-bottom: 3px; font-size: 12px; }
+  .warn-detail { font-size: 11px; opacity: 0.85; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="brand">⬡ Oanda TC</a>
+  <a href="index.html">Dashboard</a>
+  <a href="calculator.html">Calculator</a>
+  <a href="positions.html">Positions</a>
+  <a href="journal.html">Journal</a>
+  <a href="risk.html">Risk</a>
+  <a href="correlation.html" class="active">Correlation</a>
+</nav>
+
+<div class="page">
+
+  <div class="page-header">
+    <h1>🔗 Correlation Map</h1>
+    <p>Instruments in the same group move together on macro events. Taking the same direction on correlated instruments multiplies your actual risk beyond what the calculator shows.</p>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Very strong (0.90+)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> Strong (0.70–0.90)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Moderate (0.50–0.70)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Inverse correlation</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--dim)"></div> No tracked correlation</div>
+  </div>
+
+  <!-- Instrument picker -->
+  <div id="inst-grid" class="inst-grid"></div>
+
+  <div class="main-layout">
+
+    <!-- Matrix -->
+    <div class="matrix-card">
+      <div class="card-header">
+        <h2>Correlation matrix — click any cell for details</h2>
+      </div>
+      <div class="matrix-wrap">
+        <table class="matrix" id="matrix-table">
+          <thead id="matrix-head"></thead>
+          <tbody id="matrix-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Detail panel -->
+    <div class="detail-card">
+      <div class="card-header">
+        <h2>Instrument detail</h2>
+      </div>
+      <div class="detail-placeholder" id="detail-placeholder">
+        Click any instrument or matrix cell to see its correlation groups
+      </div>
+      <div class="detail-content" id="detail-content"></div>
+    </div>
+
+  </div>
+
+  <!-- Live check widget -->
+  <div class="check-card">
+    <h2>🛡 Live correlation check — simulate a new trade</h2>
+    <div class="check-row">
+      <div class="check-field">
+        <label>Instrument</label>
+        <select id="check-inst"></select>
+      </div>
+      <div class="check-field">
+        <label>Direction</label>
+        <select id="check-dir">
+          <option value="BUY">▲ BUY / LONG</option>
+          <option value="SELL">▼ SELL / SHORT</option>
+        </select>
+      </div>
+      <div class="check-field">
+        <label>&nbsp;</label>
+        <button onclick="runLiveCheck()">Check →</button>
+      </div>
+    </div>
+    <div class="check-result" id="check-result"></div>
+  </div>
+
+</div>
+
+<script>
+// ── Data (mirrors correlation.py) ──────────────────────────────────────────
+const INSTRUMENTS = [
+  { id:'EUR_USD',    label:'EUR/USD',   cat:'FX' },
+  { id:'GBP_USD',    label:'GBP/USD',   cat:'FX' },
+  { id:'GBP_JPY',    label:'GBP/JPY',   cat:'FX' },
+  { id:'WTICO_USD',  label:'WTI OIL',   cat:'ENERGY' },
+  { id:'BCO_USD',    label:'BRENT',     cat:'ENERGY' },
+  { id:'NATGAS_USD', label:'NATGAS',    cat:'ENERGY' },
+  { id:'XAU_USD',    label:'XAU/USD',   cat:'METAL' },
+  { id:'XAG_USD',    label:'XAG/USD',   cat:'METAL' },
+  { id:'XPD_USD',    label:'XPD/USD',   cat:'METAL' },
+  { id:'CORN_USD',   label:'CORN',      cat:'AGRI' },
+  { id:'WHEAT_USD',  label:'WHEAT',     cat:'AGRI' },
+  { id:'SOYBN_USD',  label:'SOYBN',     cat:'AGRI' },
+  { id:'SUGAR_USD',  label:'SUGAR',     cat:'AGRI' },
+  { id:'SPX500_USD', label:'SPX500',    cat:'INDEX' },
+  { id:'NAS100_USD', label:'NAS100',    cat:'INDEX' },
+  { id:'UK100_GBP',  label:'UK100',     cat:'INDEX' },
+  { id:'DE30_EUR',   label:'DE30',      cat:'INDEX' },
+];
+
+const GROUPS = {
+  AGRI_GRAINS:    { instruments:['CORN_USD','WHEAT_USD','SOYBN_USD'],       strength:'STRONG',      reason:'All move on USDA reports, weather events, and USD strength.' },
+  AGRI_SOFT:      { instruments:['SUGAR_USD','CORN_USD','WHEAT_USD','SOYBN_USD'], strength:'MODERATE', reason:'Broad commodity risk-on/off, USD index, energy input costs.' },
+  ENERGY:         { instruments:['WTICO_USD','BCO_USD','NATGAS_USD'],        strength:'MODERATE',    reason:'OPEC decisions, US inventory data, and geopolitical risk.' },
+  METALS_PRECIOUS:{ instruments:['XAU_USD','XAG_USD','XPD_USD'],            strength:'STRONG',      reason:'Real yields, USD, and safe-haven flows drive all precious metals.' },
+  FX_USD_MAJORS:  { instruments:['EUR_USD','GBP_USD'],                      strength:'STRONG',      reason:'Both inversely correlated to DXY. Fed decisions move all USD majors.' },
+  INDICES_US:     { instruments:['SPX500_USD','NAS100_USD'],                 strength:'VERY_STRONG', reason:'Risk sentiment, Fed policy, and earnings season drive all US indices.' },
+  INDICES_EU:     { instruments:['UK100_GBP','DE30_EUR'],                    strength:'STRONG',      reason:'ECB policy and European risk sentiment.' },
+};
+
+const INVERSE = [
+  { a:'XAU_USD', b:'USD_JPY',  reason:'Gold and USDJPY are both safe-haven proxies but move in opposite directions.' },
+  { a:'WTICO_USD', b:'USD_CAD', reason:'CAD is a petrocurrency — oil up means USDJPY falls.' },
+];
+
+const STRENGTH_ORDER = { VERY_STRONG:4, STRONG:3, MODERATE:2, INFO:1 };
+const CAT_COLOUR = { FX:'#378add', ENERGY:'#ef9f27', METAL:'#9b6dff', AGRI:'#3bb06b', INDEX:'#e24b4a' };
+
+// ── Build correlation lookup ───────────────────────────────────────────────
+function getRelation(a, b) {
+  // Check inverse
+  for (const inv of INVERSE) {
+    if ((inv.a===a&&inv.b===b)||(inv.a===b&&inv.b===a)) return { type:'inv', strength:'INVERSE' };
+  }
+  let best = null;
+  for (const [key, group] of Object.entries(GROUPS)) {
+    if (group.instruments.includes(a) && group.instruments.includes(b)) {
+      const s = STRENGTH_ORDER[group.strength]||0;
+      if (!best || s > STRENGTH_ORDER[best.strength]||0) {
+        best = { type:'pos', strength:group.strength, reason:group.reason };
+      }
+    }
+  }
+  return best || { type:'none', strength:'NONE' };
+}
+
+function cellClass(rel) {
+  if (!rel || rel.type==='none') return 'c-n';
+  if (rel.type==='inv')         return 'c-inv';
+  if (rel.strength==='VERY_STRONG') return 'c-vs';
+  if (rel.strength==='STRONG')      return 'c-s';
+  if (rel.strength==='MODERATE')    return 'c-m';
+  return 'c-n';
+}
+
+function cellLabel(rel) {
+  if (!rel || rel.type==='none') return '—';
+  if (rel.type==='inv') return 'INV';
+  if (rel.strength==='VERY_STRONG') return 'VS';
+  if (rel.strength==='STRONG')      return 'S';
+  if (rel.strength==='MODERATE')    return 'M';
+  return '—';
+}
+
+// ── Build UI ───────────────────────────────────────────────────────────────
+function buildInstrumentGrid() {
+  const grid = document.getElementById('inst-grid');
+  const select = document.getElementById('check-inst');
+  INSTRUMENTS.forEach(inst => {
+    const btn = document.createElement('button');
+    btn.className = 'inst-btn';
+    btn.dataset.id = inst.id;
+    btn.innerHTML = `<span class="cat-dot" style="background:${CAT_COLOUR[inst.cat]||'#888'}"></span>${inst.label}`;
+    btn.onclick = () => selectInstrument(inst.id);
+    grid.appendChild(btn);
+
+    const opt = document.createElement('option');
+    opt.value = inst.id;
+    opt.textContent = inst.label;
+    select.appendChild(opt);
+  });
+}
+
+function buildMatrix() {
+  const head = document.getElementById('matrix-head');
+  const body = document.getElementById('matrix-body');
+
+  // Header row
+  let headHtml = '<tr><th></th>';
+  INSTRUMENTS.forEach(inst => {
+    headHtml += `<th style="writing-mode:vertical-rl;transform:rotate(180deg);height:72px;padding:4px 4px 8px;">${inst.label}</th>`;
+  });
+  headHtml += '</tr>';
+  head.innerHTML = headHtml;
+
+  // Body rows
+  let bodyHtml = '';
+  INSTRUMENTS.forEach(rowInst => {
+    bodyHtml += `<tr>`;
+    bodyHtml += `<td style="color:${CAT_COLOUR[rowInst.cat]||'#888'}">${rowInst.label}</td>`;
+    INSTRUMENTS.forEach(colInst => {
+      if (rowInst.id === colInst.id) {
+        bodyHtml += `<td><span class="cell c-self">●</span></td>`;
+        return;
+      }
+      const rel = getRelation(rowInst.id, colInst.id);
+      const cls = cellClass(rel);
+      const lbl = cellLabel(rel);
+      const title = rel.type !== 'none' ? `${rowInst.label} × ${colInst.label}: ${rel.strength}` : '';
+      bodyHtml += `<td><span class="cell ${cls}" onclick="showCellDetail('${rowInst.id}','${colInst.id}')" title="${title}">${lbl}</span></td>`;
+    });
+    bodyHtml += `</tr>`;
+  });
+  body.innerHTML = bodyHtml;
+}
+
+function selectInstrument(id) {
+  document.querySelectorAll('.inst-btn').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+  showInstrumentDetail(id);
+}
+
+function showInstrumentDetail(id) {
+  const inst = INSTRUMENTS.find(i => i.id === id);
+  if (!inst) return;
+
+  const placeholder = document.getElementById('detail-placeholder');
+  const content     = document.getElementById('detail-content');
+  placeholder.style.display = 'none';
+  content.classList.add('visible');
+
+  const groups = [];
+  for (const [key, group] of Object.entries(GROUPS)) {
+    if (group.instruments.includes(id)) {
+      const peers = group.instruments.filter(i => i !== id);
+      groups.push({ ...group, peers });
+    }
+  }
+
+  const strengthColour = { VERY_STRONG:'danger', STRONG:'danger', MODERATE:'warning' };
+
+  let html = `<div class="detail-inst">${inst.label}</div>`;
+
+  if (groups.length === 0) {
+    html += `<div class="detail-group"><p class="detail-reason">No correlations tracked for this instrument.</p></div>`;
+  } else {
+    groups.forEach(group => {
+      const cls = strengthColour[group.strength] || 'info';
+      html += `
+        <div class="detail-group">
+          <div class="detail-group-label ${cls}">${group.strength.replace('_',' ')} CORRELATION</div>
+          <div class="detail-peers">
+            ${group.peers.map(p => {
+              const pi = INSTRUMENTS.find(i => i.id === p);
+              return `<span class="detail-peer">${pi ? pi.label : p}</span>`;
+            }).join('')}
+          </div>
+          <div class="detail-reason">${group.reason}</div>
+        </div>`;
+    });
+  }
+
+  const invs = INVERSE.filter(inv => inv.a === id || inv.b === id);
+  if (invs.length) {
+    invs.forEach(inv => {
+      const otherId = inv.a === id ? inv.b : inv.a;
+      const other   = INSTRUMENTS.find(i => i.id === otherId);
+      html += `
+        <div class="detail-group">
+          <div class="detail-group-label" style="color:var(--green)">INVERSE CORRELATION</div>
+          <div class="detail-peers"><span class="detail-peer">${other ? other.label : otherId}</span></div>
+          <div class="detail-reason">${inv.reason}</div>
+        </div>`;
+    });
+  }
+
+  content.innerHTML = html;
+}
+
+function showCellDetail(aId, bId) {
+  showInstrumentDetail(aId);
+  selectInstrument(aId);
+}
+
+// ── Live check (uses local data — no API call needed for this page) ────────
+function runLiveCheck() {
+  const instId = document.getElementById('check-inst').value;
+  const dir    = document.getElementById('check-dir').value;
+  const result = document.getElementById('check-result');
+
+  // Simulate "what if I had one of each correlated instrument open"
+  const relatedInsts = INSTRUMENTS.filter(i => {
+    if (i.id === instId) return false;
+    const rel = getRelation(instId, i.id);
+    return rel.type !== 'none';
+  });
+
+  if (relatedInsts.length === 0) {
+    result.innerHTML = `<div class="warn-block safe"><strong>✓ No correlated instruments tracked</strong><span class="warn-detail">This instrument has no tracked correlations in your 16-instrument universe.</span></div>`;
+    return;
+  }
+
+  let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em;">IF YOU HAD THESE OPEN WHEN TAKING ${instId.replace('_USD','').replace('_GBP','').replace('_EUR','')} ${dir}:</div>`;
+
+  relatedInsts.forEach(other => {
+    const rel = getRelation(instId, other.id);
+    const colMap = { VERY_STRONG:'danger', STRONG:'danger', MODERATE:'warning', INVERSE:'info' };
+    const cls = rel.type === 'inv' ? 'info' : colMap[rel.strength] || 'info';
+    const label = rel.type === 'inv' ? '↔ INVERSE' : `${rel.strength.replace('_',' ')} CORR`;
+    html += `<div class="warn-block ${cls}">
+      <strong>${label} — ${other.label}</strong>
+      <span class="warn-detail">${rel.reason||'Correlated instruments — macro events affect both simultaneously.'}</span>
+    </div>`;
+  });
+
+  result.innerHTML = html;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+buildInstrumentGrid();
+buildMatrix();
+</script>
+</body>
+</html>
