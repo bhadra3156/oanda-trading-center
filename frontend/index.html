@@ -298,6 +298,7 @@ const INSTRUMENTS = [
 
 let pendingTrade = null;
 let accountBalance = 0;
+let accountMarginAvail = 0;
 
 function fmt(n,d=2){return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}
 
@@ -312,12 +313,69 @@ function fmtP(inst,p){
   return p.toFixed(5);
 }
 
-function calcUnits(balance, marginAvail, sl_pips, inst){
-  if(!sl_pips||sl_pips<=0)return 100;
-  const risk=balance*0.01;
-  const pipVal=inst.includes('XAU')?1:10;
-  const raw=Math.floor((risk/sl_pips)/pipVal*10000);
-  return Math.max(100,Math.min(raw,Math.floor(marginAvail*3)));
+function calcUnits(balance, marginAvail, sl_pips, inst, atr, price){
+  // ATR-based position sizing matching institutional framework
+  // Risk = 1% of balance
+  // Stop = 1.5 x ATR
+  // Units = Risk / (Stop distance in price)
+  if(!balance || balance <= 0) return 0;
+
+  const riskAmount = balance * 0.01; // 1% risk
+
+  // Use ATR-based stop if available, otherwise sl_pips
+  let stopDistance = 0;
+
+  if(atr && atr > 0 && price && price > 0){
+    // Institutional method: 1.5 x ATR
+    stopDistance = atr * 1.5;
+  } else if(sl_pips && sl_pips > 0){
+    // Fallback: convert pips to price
+    const pipSize = getPipSize(inst);
+    stopDistance = sl_pips * pipSize;
+  }
+
+  if(!stopDistance || stopDistance <= 0) return 0;
+
+  // Units = Risk Amount / Stop Distance
+  // This gives us units where 1 unit moves = 1 price unit
+  let units = Math.floor(riskAmount / stopDistance);
+
+  // Instrument-specific minimums and maximums
+  if(inst.includes('SPX') || inst.includes('NAS') || inst.includes('UK1') || inst.includes('DE3')){
+    units = Math.max(1, Math.min(units, 50));    // Index CFDs — small units
+  } else if(inst.includes('XAU')){
+    units = Math.max(1, Math.min(units, 100));   // Gold — oz
+  } else if(inst.includes('NATGAS')){
+    units = Math.max(100, Math.min(units, 50000));
+  } else if(inst.includes('WTICO')){
+    units = Math.max(10, Math.min(units, 10000));
+  } else if(inst.includes('SUGAR') || inst.includes('WHEAT')){
+    units = Math.max(100, Math.min(units, 100000));
+  } else if(inst.includes('JPY') || inst.includes('USD')){
+    units = Math.max(100, Math.min(units, 100000)); // Forex
+  } else {
+    units = Math.max(1, units);
+  }
+
+  // Hard cap: never use more margin than available
+  if(price && price > 0 && marginAvail > 0){
+    const marginPerUnit = price * 0.0333; // ~3.33% margin rate
+    const maxUnitsByMargin = Math.floor((marginAvail * 0.3) / marginPerUnit);
+    if(maxUnitsByMargin > 0) units = Math.min(units, maxUnitsByMargin);
+  }
+
+  return Math.max(1, units);
+}
+
+function getPipSize(inst){
+  if(inst.includes('JPY'))    return 0.01;
+  if(inst.includes('XAU'))    return 0.1;
+  if(inst.includes('NATGAS')) return 0.001;
+  if(inst.includes('WTICO'))  return 0.01;
+  if(inst.includes('SUGAR'))  return 0.0001;
+  if(inst.includes('WHEAT'))  return 0.001;
+  if(inst.includes('SPX') || inst.includes('NAS') || inst.includes('UK1') || inst.includes('DE3')) return 1.0;
+  return 0.0001; // forex default
 }
 
 // ── RENDER SKELETON LOADING CARDS ────────────────────────────────────────────
@@ -341,7 +399,8 @@ function renderSkeletons(){
 function renderSignals(signals, account){
   const grid=document.getElementById('sig-grid');
   const bal=account?.balance||0;
-  const mar=account?.marginAvailable||0;
+  const mar=parseFloat(account?.marginAvailable||0);
+  accountMarginAvail = mar;
   const active=INSTRUMENTS.filter(i=>signals[i.id]?.signal==='BUY'||signals[i.id]?.signal==='SELL');
   const waiting=INSTRUMENTS.filter(i=>!active.find(a=>a.id===i.id));
   const ordered=[...active,...waiting];
@@ -357,7 +416,7 @@ function renderSignals(signals, account){
     const cc=isBuy?'buy':isSell?'sell':'wait';
     const conf=s.confidence||0;
     const confC=conf>70?'h':conf>40?'m':'l';
-    const units=(!isWait&&bal>0)?calcUnits(bal,mar,s.sl_pips,inst.id):0;
+    const units=(!isWait&&bal>0)?calcUnits(bal,accountMarginAvail,s.sl_pips,inst.id,s.atr,s.price):0;
     const ai=s.ai||{};
     const aiVerdict=ai.verdict||'';
     const aiClass=aiVerdict.includes('BUY')?'bull':aiVerdict.includes('SELL')?'bear':'neu';
@@ -465,7 +524,8 @@ function renderPositions(trades){
 
 // ── ACCOUNT ───────────────────────────────────────────────────────────────────
 function renderAccount(acc, pnl){
-  accountBalance=parseFloat(acc.balance||0);
+  accountBalance = parseFloat(acc.balance||0);
+  accountMarginAvail = parseFloat(acc.marginAvailable||0);
   const nav=parseFloat(acc.NAV||acc.nav||0);
   const upl=parseFloat(acc.unrealizedPL||0);
   const mar=parseFloat(acc.marginAvailable||0);
