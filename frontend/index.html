@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard &mdash; Oanda Trading Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -123,6 +124,8 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .sc-ai-text{font-size:10px;color:var(--muted2);line-height:1.6;white-space:normal}
 
 .sc-reason{font-size:10px;color:var(--muted);line-height:1.5;border-top:1px solid var(--border);padding-top:8px}
+.sc-chart{width:100%;height:160px;border-radius:8px;overflow:hidden;margin-bottom:8px;background:var(--bg3);border:1px solid var(--border);position:relative}
+.sc-chart-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);font-family:var(--mono)}
 
 /* SIZE ROW */
 .sc-size{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
@@ -378,6 +381,172 @@ function getPipSize(inst){
   return 0.0001; // forex default
 }
 
+// ── MINI CHART ENGINE ────────────────────────────────────────────────────────
+const _chartInstances = {};
+const _candleCache    = {};
+
+function calcEMA(closes, period) {
+  if (closes.length < period) return [];
+  const k = 2 / (period + 1);
+  let ema = closes.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  const result = new Array(period - 1).fill(null);
+  result.push(ema);
+  for (let i = period; i < closes.length; i++) {
+    ema = closes[i] * k + ema * (1 - k);
+    result.push(ema);
+  }
+  return result;
+}
+
+async function fetchAndRenderChart(instId, entry, sl, tp, signal) {
+  const container = document.getElementById(`chart-${instId}`);
+  if (!container) return;
+
+  // Check cache (5 min TTL)
+  const cached = _candleCache[instId];
+  if (cached && (Date.now() - cached.ts) < 300000) {
+    renderMiniChart(container, instId, cached.candles, entry, sl, tp, signal);
+    return;
+  }
+
+  try {
+    const r = await fetch(`${API}/api/candles/${instId}?granularity=H4&count=60`);
+    const d = await r.json();
+    if (!d.ok || !d.candles || d.candles.length < 10) {
+      container.innerHTML = '<div class="sc-chart-loading">Chart unavailable</div>';
+      return;
+    }
+    _candleCache[instId] = { candles: d.candles, ts: Date.now() };
+    renderMiniChart(container, instId, d.candles, entry, sl, tp, signal);
+  } catch (e) {
+    container.innerHTML = '<div class="sc-chart-loading">Chart error</div>';
+  }
+}
+
+function renderMiniChart(container, instId, candles, entry, sl, tp, signal) {
+  // Destroy previous chart instance
+  if (_chartInstances[instId]) {
+    try { _chartInstances[instId].remove(); } catch(e) {}
+    delete _chartInstances[instId];
+  }
+
+  container.innerHTML = '';
+
+  // Colour scheme matching our dark theme
+  const chart = LightweightCharts.createChart(container, {
+    width:  container.clientWidth || 280,
+    height: 160,
+    layout: {
+      background: { color: '#131920' },
+      textColor:  '#7d8590',
+    },
+    grid: {
+      vertLines:  { color: 'rgba(255,255,255,0.03)' },
+      horzLines:  { color: 'rgba(255,255,255,0.03)' },
+    },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Magnet },
+    rightPriceScale: {
+      borderColor:  'rgba(255,255,255,0.06)',
+      scaleMarginTop:    0.1,
+      scaleMarginBottom: 0.1,
+    },
+    timeScale: {
+      borderColor:     'rgba(255,255,255,0.06)',
+      timeVisible:     false,
+      secondsVisible:  false,
+      fixLeftEdge:     true,
+      fixRightEdge:    true,
+    },
+    handleScroll:   false,
+    handleScale:    false,
+  });
+
+  _chartInstances[instId] = chart;
+
+  // Candlestick series
+  const candleSeries = chart.addCandlestickSeries({
+    upColor:         '#3fb950',
+    downColor:       '#f85149',
+    borderUpColor:   '#3fb950',
+    borderDownColor: '#f85149',
+    wickUpColor:     '#3fb950',
+    wickDownColor:   '#f85149',
+  });
+
+  const data = candles.map(c => ({
+    time:  Math.floor(new Date(c.time).getTime() / 1000),
+    open:  c.open,
+    high:  c.high,
+    low:   c.low,
+    close: c.close,
+  }));
+  candleSeries.setData(data);
+
+  // 200 EMA line
+  const closes = candles.map(c => c.close);
+  const emaVals = calcEMA(closes, Math.min(50, closes.length - 1));
+  const emaData = candles
+    .map((c, i) => emaVals[i] != null
+      ? { time: Math.floor(new Date(c.time).getTime() / 1000), value: emaVals[i] }
+      : null)
+    .filter(Boolean);
+
+  if (emaData.length > 0) {
+    const emaSeries = chart.addLineSeries({
+      color:     'rgba(56,139,253,0.7)',
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+    emaSeries.setData(emaData);
+  }
+
+  // Entry, SL, TP price lines (only for BUY/SELL signals)
+  if (entry && signal !== 'WAIT') {
+    candleSeries.createPriceLine({
+      price:     parseFloat(entry),
+      color:     '#388bfd',
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: false,
+      title: 'E',
+    });
+  }
+  if (sl && signal !== 'WAIT') {
+    candleSeries.createPriceLine({
+      price:     parseFloat(sl),
+      color:     '#f85149',
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: false,
+      title: 'SL',
+    });
+  }
+  if (tp && signal !== 'WAIT') {
+    candleSeries.createPriceLine({
+      price:     parseFloat(tp),
+      color:     '#3fb950',
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: false,
+      title: 'TP',
+    });
+  }
+
+  chart.timeScale().fitContent();
+
+  // Resize observer for responsive width
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => {
+      if (container.clientWidth > 0) {
+        chart.applyOptions({ width: container.clientWidth });
+      }
+    });
+    ro.observe(container);
+  }
+}
+
 // ── RENDER SKELETON LOADING CARDS ────────────────────────────────────────────
 function renderSkeletons(){
   const grid=document.getElementById('sig-grid');
@@ -471,6 +640,9 @@ function renderSignals(signals, account){
         <span class="sc-badge ${cc}">${s.signal==='BUY'?'BUY':s.signal==='SELL'?'SELL':'WAIT'}</span>
       </div>
       <div class="sc-price">${fmtP(inst.id,s.price)}</div>
+      <div class="sc-chart" id="chart-${inst.id}">
+        <div class="sc-chart-loading">Loading H4 chart...</div>
+      </div>
       ${levelsHtml}
       <div class="sc-indicators">
         ${s.rsi?`<span class="sc-ind rsi">RSI ${s.rsi}</span>`:''}
