@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="stylesheet" href="correlation.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trading Calculator â€” Oanda Trading Center</title>
+<title>Trading Calculator &mdash; Oanda Trading Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -601,7 +600,7 @@ nav {
   background: var(--bg3);
   border-radius: 8px;
   padding: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 .modal-row {
   display: flex;
@@ -776,11 +775,17 @@ nav {
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo">
+  <div class="nav-logo" style="white-space:nowrap">
     <div class="nav-logo-dot"></div>
     OANDA TRADING CENTER
   </div>
-  <div class="nav-links"><a href="index.html" class="nav-link">Dashboard</a><a href="calculator.html" class="nav-link active">Calculator</a><a href="positions.html" class="nav-link">Positions</a><a href="journal.html" class="nav-link">Journal</a><a href="risk.html" class="nav-link">Risk</a><a href="correlation.html" class="nav-link">Correlation</a></div>
+  <div class="nav-links">
+    <a href="index.html"      class="nav-link">Dashboard</a>
+    <a href="calculator.html" class="nav-link active">Calculator</a>
+    <a href="positions.html"  class="nav-link">Positions</a>
+    <a href="journal.html"    class="nav-link">Journal</a>
+    <a href="risk.html"       class="nav-link">Risk</a>
+  </div>
   <div class="nav-right">
     <div class="nav-balance">Balance: <span id="nav-balance">Loading...</span></div>
     <div class="env-badge" id="env-badge">LIVE</div>
@@ -793,8 +798,8 @@ nav {
   <div class="page-header">
     <div class="page-header-top">
       <div>
-        <div class="page-title">âš¡ Trading Calculator</div>
-        <div class="page-subtitle">Position sizing Â· Risk management Â· One-click trade execution</div>
+        <div class="page-title">Trading Calculator</div>
+        <div class="page-subtitle">Position sizing &middot; Risk management &middot; One-click trade execution</div>
       </div>
       <div class="risk-indicator">
         <span>Account risk</span>
@@ -808,7 +813,7 @@ nav {
 
   <div class="calc-grid">
 
-    <!-- LEFT â€” CALCULATOR -->
+    <!-- LEFT &mdash; CALCULATOR -->
     <div>
       <div class="calc-panel">
         <div class="panel-header">
@@ -818,12 +823,14 @@ nav {
         <div class="panel-body">
 
           <!-- INSTRUMENTS -->
-          <div class="instrument-grid" id="inst-grid"></div>
+          <div class="instrument-grid" id="inst-grid">
+            <!-- Populated by JS -->
+          </div>
 
           <!-- DIRECTION -->
           <div class="dir-toggle">
-            <button class="dir-btn buy" id="btn-buy" onclick="setDirection('BUY')">â–² BUY / LONG</button>
-            <button class="dir-btn sell" id="btn-sell" onclick="setDirection('SELL')">â–¼ SELL / SHORT</button>
+            <button class="dir-btn buy" id="btn-buy" onclick="setDirection('BUY')">BUY BUY / LONG</button>
+            <button class="dir-btn sell" id="btn-sell" onclick="setDirection('SELL')">SELL SELL / SHORT</button>
           </div>
 
           <!-- RISK CONTROLS -->
@@ -843,7 +850,7 @@ nav {
               <label class="control-label">Max Risk (calculated)</label>
               <div class="control-input" id="risk-amount-display"
                    style="display:flex;align-items:center;color:var(--cyan)">
-                â€”
+                &mdash;
               </div>
             </div>
           </div>
@@ -860,18 +867,18 @@ nav {
             <div class="levels-visual" id="levels-visual">
               <div class="level-row">
                 <span class="level-tag tp">Take Profit</span>
-                <span class="level-price" id="r-tp" style="color:var(--green)">â€”</span>
-                <span class="level-dist" id="r-tp-pips">â€”</span>
+                <span class="level-price" id="r-tp" style="color:var(--green)">&mdash;</span>
+                <span class="level-dist" id="r-tp-pips">&mdash;</span>
               </div>
               <div class="level-row">
                 <span class="level-tag entry">Entry</span>
-                <span class="level-price" id="r-entry" style="color:var(--blue)">â€”</span>
+                <span class="level-price" id="r-entry" style="color:var(--blue)">&mdash;</span>
                 <span class="level-dist">Current price</span>
               </div>
               <div class="level-row">
                 <span class="level-tag sl">Stop Loss</span>
-                <span class="level-price" id="r-sl" style="color:var(--red)">â€”</span>
-                <span class="level-dist" id="r-sl-pips">â€”</span>
+                <span class="level-price" id="r-sl" style="color:var(--red)">&mdash;</span>
+                <span class="level-dist" id="r-sl-pips">&mdash;</span>
               </div>
             </div>
 
@@ -879,46 +886,46 @@ nav {
             <div class="results-grid">
               <div class="result-item">
                 <div class="result-label">Position Size</div>
-                <div class="result-value units" id="r-units">â€”</div>
+                <div class="result-value units" id="r-units">&mdash;</div>
               </div>
               <div class="result-item">
                 <div class="result-label">Risk Amount</div>
-                <div class="result-value risk" id="r-risk">â€”</div>
+                <div class="result-value risk" id="r-risk">&mdash;</div>
               </div>
               <div class="result-item">
                 <div class="result-label">R:R Ratio</div>
-                <div class="result-value rr" id="r-rr">â€”</div>
+                <div class="result-value rr" id="r-rr">&mdash;</div>
               </div>
               <div class="result-item">
                 <div class="result-label">SL Pips</div>
-                <div class="result-value sl" id="r-sl-p">â€”</div>
+                <div class="result-value sl" id="r-sl-p">&mdash;</div>
               </div>
               <div class="result-item">
                 <div class="result-label">TP Pips</div>
-                <div class="result-value tp" id="r-tp-p">â€”</div>
+                <div class="result-value tp" id="r-tp-p">&mdash;</div>
               </div>
               <div class="result-item">
                 <div class="result-label">Margin Est.</div>
-                <div class="result-value" style="color:var(--muted2)" id="r-margin">â€”</div>
+                <div class="result-value" style="color:var(--muted2)" id="r-margin">&mdash;</div>
               </div>
             </div>
 
             <!-- GEMINI AI ANALYSIS -->
             <div class="ai-box" id="ai-box">
               <div class="ai-header">
-                <span class="ai-label">ðŸ¤– Gemini AI Analysis</span>
-                <span class="ai-verdict" id="ai-verdict">â€”</span>
+                <span class="ai-label">[AI] Gemini AI Analysis</span>
+                <span class="ai-verdict" id="ai-verdict">&mdash;</span>
               </div>
-              <div class="ai-text" id="ai-summary">â€”</div>
+              <div class="ai-text" id="ai-summary">&mdash;</div>
               <div class="ai-warning" id="ai-warning">
-                <span>âš ï¸</span>
-                <span id="ai-warning-text">â€”</span>
+                <span>[!]</span>
+                <span id="ai-warning-text">&mdash;</span>
               </div>
             </div>
 
             <!-- PLACE TRADE BUTTON -->
             <button class="trade-btn buy" id="trade-btn" onclick="confirmTrade()" disabled>
-              â–² PLACE BUY ORDER
+              BUY PLACE BUY ORDER
             </button>
 
           </div><!-- /results -->
@@ -933,32 +940,32 @@ nav {
       <div class="account-card">
         <div class="acc-header">
           <span>Account</span>
-          <span id="acc-update" style="color:var(--muted)">â€”</span>
+          <span id="acc-update" style="color:var(--muted)">&mdash;</span>
         </div>
         <div class="acc-items">
           <div class="acc-item">
             <span class="acc-item-label">Balance</span>
-            <span class="acc-item-value" id="acc-balance" style="color:var(--green)">â€”</span>
+            <span class="acc-item-value" id="acc-balance" style="color:var(--green)">&mdash;</span>
           </div>
           <div class="acc-item">
             <span class="acc-item-label">NAV</span>
-            <span class="acc-item-value" id="acc-nav" style="color:var(--blue)">â€”</span>
+            <span class="acc-item-value" id="acc-nav" style="color:var(--blue)">&mdash;</span>
           </div>
           <div class="acc-item">
             <span class="acc-item-label">Unrealized P&L</span>
-            <span class="acc-item-value" id="acc-upl">â€”</span>
+            <span class="acc-item-value" id="acc-upl">&mdash;</span>
           </div>
           <div class="acc-item">
             <span class="acc-item-label">Margin Available</span>
-            <span class="acc-item-value" id="acc-margin">â€”</span>
+            <span class="acc-item-value" id="acc-margin">&mdash;</span>
           </div>
           <div class="acc-item">
             <span class="acc-item-label">Today's P&L</span>
-            <span class="acc-item-value" id="acc-pnl">â€”</span>
+            <span class="acc-item-value" id="acc-pnl">&mdash;</span>
           </div>
           <div class="acc-item">
             <span class="acc-item-label">Open Trades</span>
-            <span class="acc-item-value" id="acc-trades" style="color:var(--gold)">â€”</span>
+            <span class="acc-item-value" id="acc-trades" style="color:var(--gold)">&mdash;</span>
           </div>
         </div>
       </div>
@@ -967,7 +974,7 @@ nav {
       <div class="trades-mini">
         <div class="acc-header">
           <span>Open Positions</span>
-          <span id="trades-count" style="color:var(--gold)">â€”</span>
+          <span id="trades-count" style="color:var(--gold)">&mdash;</span>
         </div>
         <div id="trades-mini-list">
           <div style="padding:1rem;text-align:center;font-size:12px;color:var(--muted)">Loading...</div>
@@ -977,7 +984,7 @@ nav {
       <!-- NEWS WARNINGS -->
       <div class="news-card" id="news-card" style="display:none">
         <div class="acc-header" style="color:var(--gold)">
-          <span>âš ï¸ High Impact News</span>
+          <span>[!] High Impact News</span>
         </div>
         <div id="news-list"></div>
       </div>
@@ -991,10 +998,8 @@ nav {
   <div class="modal">
     <div class="modal-title" id="modal-title">Confirm Trade</div>
     <div class="modal-details" id="modal-details"></div>
-    <!-- â–¼ CORRELATION WARNINGS injected here before confirm button â–¼ -->
-    <div id="corr-warnings"></div>
     <div class="modal-warning">
-      âš ï¸ This will place a REAL trade on your live Oanda account. Make sure you have reviewed the setup on TradingView first.
+      [!] This will place a REAL trade on your live Oanda account. Make sure you have reviewed the setup on TradingView first.
     </div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal()">Cancel</button>
@@ -1005,18 +1010,15 @@ nav {
 
 <!-- TOAST -->
 <div class="toast" id="toast">
-  <span id="toast-icon">âœ…</span>
+  <span id="toast-icon">[OK]</span>
   <span id="toast-msg">Trade placed successfully!</span>
 </div>
 
 <script>
-/* â”€â”€ API BASE â€” used by both page scripts AND correlation.js â”€â”€â”€â”€ */
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8000'
   : 'https://oanda-trading-center.onrender.com';
-
-/* Keep legacy API alias so nothing breaks */
-const API = API_BASE;
 
 const INSTRUMENTS = [
   {id:'EUR_USD', name:'EUR/USD', cat:'FX'},
@@ -1045,13 +1047,13 @@ let state = {
   result:     null,
 };
 
-/* â”€â”€â”€ HELPERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+// ─── INIT ─────────────────────────────────────────────────────────────────────
 function fmt(n, d=2) {
   return Number(n).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
 }
 
 function fmtP(inst, p) {
-  if (!p) return 'â€”';
+  if (!p) return '&mdash;';
   p = Number(p);
   if (inst.includes('JPY'))  return p.toFixed(3);
   if (inst.includes('XAU') || inst.includes('BCO') || inst.includes('WTICO')) return p.toFixed(2);
@@ -1062,7 +1064,6 @@ function fmtP(inst, p) {
   return p.toFixed(5);
 }
 
-/* â”€â”€â”€ INSTRUMENT GRID â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function buildInstrumentGrid() {
   const grid = document.getElementById('inst-grid');
   grid.innerHTML = INSTRUMENTS.map(i => `
@@ -1094,10 +1095,10 @@ function setDirection(dir) {
   const btn = document.getElementById('trade-btn');
   if (dir === 'BUY') {
     btn.className = 'trade-btn buy';
-    btn.textContent = 'â–² PLACE BUY ORDER';
+    btn.textContent = 'BUY PLACE BUY ORDER';
   } else {
     btn.className = 'trade-btn sell';
-    btn.textContent = 'â–¼ PLACE SELL ORDER';
+    btn.textContent = 'SELL PLACE SELL ORDER';
   }
 }
 
@@ -1120,7 +1121,7 @@ function updateRiskAmount() {
   }
 }
 
-/* â”€â”€â”€ FETCH DATA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+// ─── FETCH DATA ───────────────────────────────────────────────────────────────
 async function fetchAccount() {
   try {
     const r = await fetch(`${API}/api/account`);
@@ -1174,9 +1175,9 @@ async function fetchTrades() {
       return;
     }
     list.innerHTML = trades.map(t => {
-      const pnl   = fl(t.unrealizedPL || 0);
-      const units = Math.abs(fl(t.currentUnits || 0));
-      const dir   = fl(t.currentUnits || 0) > 0 ? 'LONG' : 'SHORT';
+      const pnl   = float(t.unrealizedPL || 0);
+      const units = Math.abs(float(t.currentUnits || 0));
+      const dir   = float(t.currentUnits || 0) > 0 ? 'LONG' : 'SHORT';
       const inst  = (t.instrument||'').replace('_','/');
       return `<div class="trade-mini-item">
         <div>
@@ -1189,7 +1190,7 @@ async function fetchTrades() {
   } catch(e) { console.error(e); }
 }
 
-function fl(v) { try { return parseFloat(v) || 0; } catch { return 0; } }
+function float(v) { try { return parseFloat(v) || 0; } catch { return 0; } }
 
 async function fetchNews() {
   try {
@@ -1201,7 +1202,7 @@ async function fetchNews() {
     card.style.display = 'block';
     list.innerHTML = d.news.slice(0,4).map(n => `
       <div class="news-item">
-        <span class="news-flag">ðŸ“…</span>
+        <span class="news-flag"></span>
         <div>
           <div class="news-title">${n.title} (${n.country})</div>
           <div class="news-date">${n.date}</div>
@@ -1210,10 +1211,10 @@ async function fetchNews() {
   } catch(e) {}
 }
 
-/* â”€â”€â”€ CALCULATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+// ─── CALCULATE ────────────────────────────────────────────────────────────────
 async function calculate() {
   if (!state.instrument) {
-    showToast('error', 'âš ï¸ Please select an instrument first');
+    showToast('error', '[!] Please select an instrument first');
     return;
   }
   const btn = document.getElementById('calc-btn');
@@ -1235,7 +1236,7 @@ async function calculate() {
     state.result = d.calculation;
     renderResults(d.calculation);
   } catch(e) {
-    showToast('error', 'âŒ ' + e.message);
+    showToast('error', '[ERR] ' + e.message);
   } finally {
     btn.innerHTML = 'Calculate Position Size';
     btn.classList.remove('loading');
@@ -1257,17 +1258,21 @@ function renderResults(c) {
   document.getElementById('r-tp-p').textContent   = c.tp_pips + 'p';
   document.getElementById('r-margin').textContent = '$' + fmt(c.margin_required);
 
+  // Trade button
   const btn = document.getElementById('trade-btn');
   btn.disabled = false;
   if (isBuy) {
     btn.className = 'trade-btn buy';
-    btn.innerHTML = `â–² BUY ${c.units.toLocaleString()} units of ${state.instrument.replace('_','/')}`;
+    btn.innerHTML = `BUY BUY ${c.units.toLocaleString()} units of ${state.instrument.replace('_','/')}`;
   } else {
     btn.className = 'trade-btn sell';
-    btn.innerHTML = `â–¼ SELL ${c.units.toLocaleString()} units of ${state.instrument.replace('_','/')}`;
+    btn.innerHTML = `SELL SELL ${c.units.toLocaleString()} units of ${state.instrument.replace('_','/')}`;
   }
 
+  // Show results
   document.getElementById('results').classList.add('show');
+
+  // Fetch Gemini analysis
   fetchSignalForInstrument();
 }
 
@@ -1286,22 +1291,22 @@ async function fetchSignalForInstrument() {
       document.getElementById('ai-verdict').textContent  = verdict;
       document.getElementById('ai-verdict').className    =
         'ai-verdict ' + (isBull?'bullish':isBear?'bearish':'neutral');
-      document.getElementById('ai-summary').textContent  = ai.summary || 'â€”';
-      document.getElementById('ai-warning-text').textContent = ai.warning || 'â€”';
+      document.getElementById('ai-summary').textContent  = ai.summary || '&mdash;';
+      document.getElementById('ai-warning-text').textContent = ai.warning || '&mdash;';
       box.classList.add('show');
     }
   } catch(e) {}
 }
 
-/* â”€â”€â”€ TRADE EXECUTION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-async function confirmTrade() {
+// ─── TRADE EXECUTION ──────────────────────────────────────────────────────────
+function confirmTrade() {
   if (!state.result) return;
   const c   = state.result;
   const dir = state.direction;
   const inst = state.instrument.replace('_','/');
 
   document.getElementById('modal-title').innerHTML =
-    `${dir==='BUY'?'ðŸŸ¢':'ðŸ”´'} Confirm ${dir} â€” ${inst}`;
+    `${dir==='BUY'?'':''} Confirm ${dir} &mdash; ${inst}`;
 
   document.getElementById('modal-details').innerHTML = `
     <div class="modal-row">
@@ -1338,28 +1343,15 @@ async function confirmTrade() {
     </div>
   `;
 
-  /* â–¼ Run correlation check and render warnings inside modal â–¼ */
-  await correlationChecker.loadOpenPositions();
-  const corrResult = await correlationChecker.check(state.instrument, dir);
-  const corrEl     = document.getElementById('corr-warnings');
   const confirmBtn = document.getElementById('modal-confirm');
-  correlationChecker.renderInModal(corrResult, corrEl);
-  correlationChecker.applyBlockState(corrResult, confirmBtn);
-
-  if (!corrResult?.block_trade) {
-    confirmBtn.textContent = `CONFIRM ${dir}`;
-    confirmBtn.className   = `modal-confirm ${dir.toLowerCase()}`;
-  }
+  confirmBtn.textContent = `CONFIRM ${dir}`;
+  confirmBtn.className   = `modal-confirm ${dir.toLowerCase()}`;
 
   document.getElementById('modal').classList.add('show');
 }
 
 function closeModal() {
   document.getElementById('modal').classList.remove('show');
-  /* Reset confirm button state when modal closes */
-  const confirmBtn = document.getElementById('modal-confirm');
-  confirmBtn.disabled = false;
-  confirmBtn.classList.remove('btn-blocked');
 }
 
 async function executeTrade() {
@@ -1385,22 +1377,22 @@ async function executeTrade() {
     closeModal();
     if (d.ok) {
       showToast('success',
-        `âœ… ${state.direction} order placed â€” ${c.units.toLocaleString()} units of ${state.instrument.replace('_','/')}`);
+        `[OK] ${state.direction} order placed &mdash; ${c.units.toLocaleString()} units of ${state.instrument.replace('_','/')}`);
       fetchAccount();
       fetchTrades();
     } else {
-      showToast('error', 'âŒ Order failed: ' + (d.detail || 'Unknown error'));
+      showToast('error', '[ERR] Order failed: ' + (d.detail || 'Unknown error'));
     }
   } catch(e) {
     closeModal();
-    showToast('error', 'âŒ ' + e.message);
+    showToast('error', '[ERR] ' + e.message);
   } finally {
     confirmBtn.textContent = `CONFIRM ${state.direction}`;
     confirmBtn.disabled    = false;
   }
 }
 
-/* â”€â”€â”€ TOAST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+// ─── TOAST ────────────────────────────────────────────────────────────────────
 function showToast(type, msg) {
   const toast = document.getElementById('toast');
   document.getElementById('toast-msg').textContent = msg;
@@ -1408,7 +1400,7 @@ function showToast(type, msg) {
   setTimeout(() => toast.classList.remove('show'), 5000);
 }
 
-/* â”€â”€â”€ STARTUP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+// ─── STARTUP ─────────────────────────────────────────────────────────────────
 buildInstrumentGrid();
 setDirection('BUY');
 fetchAccount();
@@ -1416,13 +1408,10 @@ fetchPrices();
 fetchTrades();
 fetchNews();
 
+// Auto-refresh prices every 15s
 setInterval(fetchPrices, 15000);
 setInterval(fetchAccount, 30000);
 setInterval(fetchTrades, 30000);
 </script>
-
-<!-- correlation.js must load AFTER the API_BASE const is defined above -->
-<script src="correlation.js"></script>
 </body>
 </html>
-

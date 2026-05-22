@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Positions â€” Oanda Trading Center</title>
+<title>Positions &mdash; Oanda Trading Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -175,12 +175,18 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 <body>
 
 <nav>
-  <div class="nav-logo"><div class="nav-dot"></div>OANDA TRADING CENTER</div>
-  <div class="nav-links"><a href="index.html" class="nav-link">Dashboard</a><a href="calculator.html" class="nav-link">Calculator</a><a href="positions.html" class="nav-link active">Positions</a><a href="journal.html" class="nav-link">Journal</a><a href="risk.html" class="nav-link">Risk</a><a href="correlation.html" class="nav-link">Correlation</a></div>
+  <div class="nav-logo" style="white-space:nowrap"><div class="nav-dot"></div>OANDA TRADING CENTER</div>
+  <div class="nav-links">
+    <a href="index.html"      class="nav-link">Dashboard</a>
+    <a href="calculator.html" class="nav-link">Calculator</a>
+    <a href="positions.html"  class="nav-link active">Positions</a>
+    <a href="journal.html"    class="nav-link">Journal</a>
+    <a href="risk.html"       class="nav-link">Risk</a>
+  </div>
   <div class="nav-right">
-    <div class="nav-bal">Balance: <span id="nav-bal">â€”</span></div>
+    <div class="nav-bal">Balance: <span id="nav-bal">&mdash;</span></div>
     <div class="env-badge">LIVE</div>
-    <button class="rbtn" onclick="loadAll()">â†» Refresh</button>
+    <button class="rbtn" onclick="loadAll()">Refresh Refresh</button>
   </div>
 </nav>
 
@@ -188,19 +194,19 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
   <!-- ACCOUNT STRIP -->
   <div class="acc-strip">
-    <div class="acc-card g"><div class="acc-lbl">Balance</div><div class="acc-val g" id="a-bal">â€”</div><div class="acc-sub" id="a-cur">GBP</div></div>
-    <div class="acc-card b"><div class="acc-lbl">Net Asset Value</div><div class="acc-val b" id="a-nav">â€”</div><div class="acc-sub" id="a-upl">Unrealized â€”</div></div>
-    <div class="acc-card" id="a-mcard"><div class="acc-lbl">Margin Available</div><div class="acc-val" id="a-mar">â€”</div><div class="acc-sub" id="a-mpct">â€”% of NAV</div></div>
-    <div class="acc-card gold"><div class="acc-lbl">Today P&amp;L</div><div class="acc-val" id="a-pnl">â€”</div><div class="acc-sub" id="a-wr">â€”</div></div>
-    <div class="acc-card"><div class="acc-lbl">Total Unrealized</div><div class="acc-val" id="a-upl2">â€”</div><div class="acc-sub" id="a-pos">â€” positions</div></div>
+    <div class="acc-card g"><div class="acc-lbl">Balance</div><div class="acc-val g" id="a-bal">&mdash;</div><div class="acc-sub" id="a-cur">GBP</div></div>
+    <div class="acc-card b"><div class="acc-lbl">Net Asset Value</div><div class="acc-val b" id="a-nav">&mdash;</div><div class="acc-sub" id="a-upl">Unrealized &mdash;</div></div>
+    <div class="acc-card" id="a-mcard"><div class="acc-lbl">Margin Available</div><div class="acc-val" id="a-mar">&mdash;</div><div class="acc-sub" id="a-mpct">&mdash;% of NAV</div></div>
+    <div class="acc-card gold"><div class="acc-lbl">Today P&amp;L</div><div class="acc-val" id="a-pnl">&mdash;</div><div class="acc-sub" id="a-wr">&mdash;</div></div>
+    <div class="acc-card"><div class="acc-lbl">Total Unrealized</div><div class="acc-val" id="a-upl2">&mdash;</div><div class="acc-sub" id="a-pos">&mdash; positions</div></div>
   </div>
 
   <!-- OPEN POSITIONS -->
   <div class="sec-hdr">
-    <div class="sec-title">ðŸ“Š Open Positions â€” Live Management</div>
+    <div class="sec-title"> Open Positions &mdash; Live Management</div>
     <div class="sec-actions">
       <button class="action-btn danger" onclick="confirmCloseAll()">Close All Positions</button>
-      <button class="action-btn info" onclick="loadAll()">â†» Refresh</button>
+      <button class="action-btn info" onclick="loadAll()">Refresh Refresh</button>
     </div>
   </div>
 
@@ -210,8 +216,8 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
   <!-- TRADE HISTORY -->
   <div class="sec-hdr">
-    <div class="sec-title">ðŸ“‹ Recent Trade History</div>
-    <div style="font-size:11px;font-family:var(--mono);color:var(--muted)" id="hist-count">â€”</div>
+    <div class="sec-title"> Recent Trade History</div>
+    <div style="font-size:11px;font-family:var(--mono);color:var(--muted)" id="hist-count">&mdash;</div>
   </div>
   <div class="history-wrap">
     <div class="table-wrap">
@@ -236,7 +242,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div class="modal-body">
       <div style="background:var(--bg3);border-radius:8px;padding:1rem;margin-bottom:1rem" id="mc-details"></div>
     </div>
-    <div class="modal-warn">âš ï¸ This will immediately close your position at the current market price.</div>
+    <div class="modal-warn">[!] This will immediately close your position at the current market price.</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('modal-close')">Cancel</button>
       <button class="modal-ok" id="mc-confirm" onclick="executeClose()">Close Position</button>
@@ -252,7 +258,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
       <p style="font-size:13px;color:var(--muted2);margin-bottom:1rem">This will move your stop loss to your entry price, locking in a breakeven trade.</p>
       <div style="background:var(--bg3);border-radius:8px;padding:1rem" id="be-details"></div>
     </div>
-    <div class="modal-warn">âš ï¸ Feature coming soon â€” modify orders via Oanda directly for now.</div>
+    <div class="modal-warn">[!] Feature coming soon &mdash; modify orders via Oanda directly for now.</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('modal-be')">Cancel</button>
       <button class="modal-ok cyan" onclick="closeModal('modal-be')">Got it</button>
@@ -263,11 +269,11 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 <!-- CLOSE ALL CONFIRM -->
 <div class="modal-overlay" id="modal-closeall">
   <div class="modal">
-    <div class="modal-title">âš ï¸ Close ALL Positions</div>
+    <div class="modal-title">[!] Close ALL Positions</div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--muted2)">This will close every open position immediately at market price. This action cannot be undone.</p>
     </div>
-    <div class="modal-warn">âš ï¸ ALL positions will be closed. Make sure you want to do this.</div>
+    <div class="modal-warn">[!] ALL positions will be closed. Make sure you want to do this.</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal('modal-closeall')">Cancel</button>
       <button class="modal-ok" onclick="executeCloseAll()">Close All Now</button>
@@ -276,7 +282,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 </div>
 
 <!-- TOAST -->
-<div class="toast" id="toast"><span id="toast-icon">âœ…</span><span id="toast-msg">â€”</span></div>
+<div class="toast" id="toast"><span id="toast-icon">[OK]</span><span id="toast-msg">&mdash;</span></div>
 
 <script>
 const API = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
@@ -290,7 +296,7 @@ let allTrades = [];
 function fmt(n,d=2){return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}
 
 function fmtP(inst,p){
-  if(p==null||p===undefined)return 'â€”';
+  if(p==null||p===undefined)return '&mdash;';
   p=Number(p);
   if(inst.includes('JPY'))return p.toFixed(3);
   if(inst.includes('XAU')||inst.includes('BCO')||inst.includes('WTICO'))return p.toFixed(2);
@@ -308,7 +314,7 @@ function renderPositions(trades){
   const posEl=document.getElementById('a-pos');
 
   if(!trades||trades.length===0){
-    container.innerHTML='<div class="empty">No open positions right now.<br><a href="calculator.html" style="color:var(--blue);text-decoration:none">â†’ Go to Calculator to find a setup</a></div>';
+    container.innerHTML='<div class="empty">No open positions right now.<br><a href="calculator.html" style="color:var(--blue);text-decoration:none">-> Go to Calculator to find a setup</a></div>';
     if(uplEl)uplEl.textContent='$0.00';
     if(posEl)posEl.textContent='0 positions';
     return;
@@ -337,7 +343,7 @@ function renderPositions(trades){
 
     const slDist=sl&&entry?Math.abs(entry-sl):0;
     const tpDist=tp&&entry?Math.abs(tp-entry):0;
-    const rr=slDist>0&&tpDist>0?(tpDist/slDist).toFixed(1):'â€”';
+    const rr=slDist>0&&tpDist>0?(tpDist/slDist).toFixed(1):'&mdash;';
 
     const pnlPct=entry>0?(pnl/(entry*units)*100).toFixed(2):0;
 
@@ -350,10 +356,10 @@ function renderPositions(trades){
       <div class="pos-body">
         <div class="pos-row1">
           <div class="pos-left">
-            <div class="pos-icon ${isLong?'long':'short'}">${isLong?'â–²L':'â–¼S'}</div>
+            <div class="pos-icon ${isLong?'long':'short'}">${isLong?'BUYL':'SELLS'}</div>
             <div>
               <div class="pos-inst">${instDisp}</div>
-              <div class="pos-meta">ID: ${t.id} Â· ${units.toLocaleString()} units Â· ${dir}</div>
+              <div class="pos-meta">ID: ${t.id} &middot; ${units.toLocaleString()} units &middot; ${dir}</div>
             </div>
           </div>
           <div class="pos-right">
@@ -370,27 +376,27 @@ function renderPositions(trades){
           </div>
           <div class="pos-lv">
             <div class="pos-lv-lbl cur">Current</div>
-            <div class="pos-lv-val" id="cur-${t.id}">â€”</div>
+            <div class="pos-lv-val" id="cur-${t.id}">&mdash;</div>
             <div class="pos-lv-dist" id="curdist-${t.id}">Fetching...</div>
           </div>
           <div class="pos-lv">
             <div class="pos-lv-lbl sl">Stop Loss</div>
             <div class="pos-lv-val" style="color:var(--red)">${sl?fmtP(inst,sl):'Not set'}</div>
-            <div class="pos-lv-dist" style="color:var(--muted)">${slDistStr||'â€”'}</div>
+            <div class="pos-lv-dist" style="color:var(--muted)">${slDistStr||'&mdash;'}</div>
           </div>
           <div class="pos-lv">
             <div class="pos-lv-lbl tp">Take Profit</div>
             <div class="pos-lv-val" style="color:var(--green)">${tp?fmtP(inst,tp):'Not set'}</div>
-            <div class="pos-lv-dist" style="color:var(--muted)">${tpDistStr||'â€”'}</div>
+            <div class="pos-lv-dist" style="color:var(--muted)">${tpDistStr||'&mdash;'}</div>
           </div>
         </div>
 
         <div class="pos-risk-bar">
           <div class="pos-risk-labels">
-            <span style="color:var(--red)">SL ${sl?fmtP(inst,sl):'â€”'}</span>
+            <span style="color:var(--red)">SL ${sl?fmtP(inst,sl):'&mdash;'}</span>
             <span style="color:var(--blue)">Entry ${fmtP(inst,entry)}</span>
             <span>R:R ${rr}:1</span>
-            <span style="color:var(--green)">TP ${tp?fmtP(inst,tp):'â€”'}</span>
+            <span style="color:var(--green)">TP ${tp?fmtP(inst,tp):'&mdash;'}</span>
           </div>
           <div class="pos-risk-track" style="background:linear-gradient(90deg,var(--rdim),var(--gdim))">
             <div class="pos-risk-fill" style="width:50%;background:transparent">
@@ -401,16 +407,16 @@ function renderPositions(trades){
 
         <div class="pos-actions">
           <button class="pos-action close-full" onclick="confirmClose('${t.id}','${instDisp}',${pnl},${units},'${dir}')">
-            âœ• Close Position
+            x Close Position
           </button>
           <button class="pos-action breakeven" onclick="showBreakeven('${t.id}','${instDisp}',${entry})">
-            â‡’ Move to Breakeven
+            -> Move to Breakeven
           </button>
           <button class="pos-action add-sl" onclick="window.location.href='calculator.html'">
-            âš™ Recalculate SL/TP
+             Recalculate SL/TP
           </button>
           <button class="pos-action goto-calc" onclick="window.location.href='calculator.html'">
-            â†’ Open Calculator
+            -> Open Calculator
           </button>
         </div>
       </div>
@@ -454,22 +460,22 @@ function renderHistory(trades){
     const units=Math.abs(parseFloat(t.currentUnits||t.initialUnits||0));
     const isLong=!t.currentUnits||parseFloat(t.initialUnits||1)>0;
     const inst=(t.instrument||'').replace('_','/');
-    const closeTime=t.closeTime?(new Date(t.closeTime).toLocaleString()):'â€”';
+    const closeTime=t.closeTime?(new Date(t.closeTime).toLocaleString()):'&mdash;';
     const outcome=pnl>0?'WIN':pnl<0?'LOSS':'OPEN';
     return `<tr>
       <td style="color:var(--muted)">${closeTime}</td>
       <td class="td-inst">${inst}</td>
-      <td><span class="td-dir ${isLong?'long':'short'}">${isLong?'â–² LONG':'â–¼ SHORT'}</span></td>
+      <td><span class="td-dir ${isLong?'long':'short'}">${isLong?'BUY LONG':'SELL SHORT'}</span></td>
       <td>${units.toLocaleString()}</td>
-      <td>${t.price||'â€”'}</td>
-      <td>${t.averageClosePrice||'â€”'}</td>
+      <td>${t.price||'&mdash;'}</td>
+      <td>${t.averageClosePrice||'&mdash;'}</td>
       <td class="${pnl>=0?'td-pnl-pos':'td-pnl-neg'}">${pnl>=0?'+':''}$${fmt(pnl)}</td>
       <td><span class="td-outcome ${outcome.toLowerCase()}">${outcome}</span></td>
     </tr>`;
   }).join('');
 }
 
-// â”€â”€ CLOSE SINGLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CLOSE SINGLE ──────────────────────────────────────────────────────────────
 function confirmClose(tradeId, instName, pnl, units, dir){
   pendingCloseId=tradeId;
   pendingCloseInst=instName;
@@ -505,13 +511,13 @@ async function executeClose(){
     });
     const d=await r.json();
     closeModal('modal-close');
-    if(d.ok){showToast('success',`âœ… ${pendingCloseInst} position closed`);setTimeout(loadAll,1500);}
-    else showToast('error','âŒ Close failed: '+(d.detail||'Unknown error'));
-  }catch(e){closeModal('modal-close');showToast('error','âŒ '+e.message);}
+    if(d.ok){showToast('success',`[OK] ${pendingCloseInst} position closed`);setTimeout(loadAll,1500);}
+    else showToast('error','[ERR] Close failed: '+(d.detail||'Unknown error'));
+  }catch(e){closeModal('modal-close');showToast('error','[ERR] '+e.message);}
   finally{btn.textContent='Close Position';btn.disabled=false;}
 }
 
-// â”€â”€ CLOSE ALL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── CLOSE ALL ─────────────────────────────────────────────────────────────────
 function confirmCloseAll(){
   document.getElementById('modal-closeall').classList.add('show');
 }
@@ -527,11 +533,11 @@ async function executeCloseAll(){
       });
     }catch(e){}
   }
-  showToast('success','âœ… All positions closed');
+  showToast('success','[OK] All positions closed');
   setTimeout(loadAll,2000);
 }
 
-// â”€â”€ BREAKEVEN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── BREAKEVEN ─────────────────────────────────────────────────────────────────
 function showBreakeven(tradeId, instName, entry){
   document.getElementById('be-details').innerHTML=`
     <div style="font-size:13px;display:flex;justify-content:space-between">
@@ -550,7 +556,7 @@ function showToast(type,msg){
   setTimeout(()=>t.classList.remove('show'),5000);
 }
 
-// â”€â”€ LOAD ALL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LOAD ALL ──────────────────────────────────────────────────────────────────
 async function loadAll(){
   try{
     // Account
@@ -577,7 +583,7 @@ async function loadAll(){
       const pe=document.getElementById('a-pnl');
       pe.textContent=(pnl.total_pnl>=0?'+':'')+'$'+fmt(pnl.total_pnl);
       pe.className='acc-val '+(pnl.total_pnl>=0?'g':'r');
-      document.getElementById('a-wr').textContent=pnl.trade_count+' trades Â· '+pnl.win_rate+'% win';
+      document.getElementById('a-wr').textContent=pnl.trade_count+' trades &middot; '+pnl.win_rate+'% win';
     }
 
     // Open trades
@@ -590,7 +596,7 @@ async function loadAll(){
 
     // History
     const histR=await fetch(`${API}/api/account`);
-    // Use trade history from account endpoint â€” simplified
+    // Use trade history from account endpoint &mdash; simplified
     renderHistory([]);
 
   }catch(e){console.error(e);}
@@ -601,4 +607,3 @@ setInterval(loadAll,30000);
 </script>
 </body>
 </html>
-

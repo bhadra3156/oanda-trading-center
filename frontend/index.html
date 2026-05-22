@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="correlation.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard â€” Oanda Trading Center</title>
+<title>Dashboard &mdash; Oanda Trading Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -41,29 +41,15 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .scan-dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
 .scan-dot.scanning{background:var(--gold);animation:pulse 1s infinite}
 .scan-dot.done{background:var(--green)}
-.scan-dot.error{background:var(--red)}
-
-/* MARGIN CALL BANNER */
-.margin-banner{background:linear-gradient(135deg,rgba(248,81,73,0.15),rgba(248,81,73,0.05));border:1px solid rgba(248,81,73,0.4);border-radius:10px;padding:12px 18px;margin-bottom:1rem;display:none;align-items:center;gap:12px;animation:bannerPulse 2s infinite}
-.margin-banner.show{display:flex}
-@keyframes bannerPulse{0%,100%{border-color:rgba(248,81,73,0.4)}50%{border-color:rgba(248,81,73,0.8)}}
-.margin-banner-icon{font-size:20px}
-.margin-banner-text{flex:1}
-.margin-banner-title{font-size:13px;font-weight:700;color:var(--red);margin-bottom:2px}
-.margin-banner-sub{font-size:11px;color:var(--muted2);font-family:var(--mono)}
-.margin-banner-btn{background:var(--red);color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap}
-.margin-banner-btn:hover{opacity:0.85}
 
 /* MAIN */
 .main{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:1.5rem 2rem}
 
 /* ACCOUNT STRIP */
 .acc-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:1.5rem}
-.acc-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;transition:all 0.3s}
+.acc-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
 .acc-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,transparent)}
-.acc-card.g{--ac:var(--green)}.acc-card.b{--ac:var(--blue)}.acc-card.r{--ac:var(--red);border-color:rgba(248,81,73,0.3)}.acc-card.gold{--ac:var(--gold)}.acc-card.p{--ac:var(--purple)}
-.acc-card.warn{--ac:var(--red);border-color:rgba(248,81,73,0.5);background:rgba(248,81,73,0.05);animation:warnPulse 2s infinite}
-@keyframes warnPulse{0%,100%{border-color:rgba(248,81,73,0.5)}50%{border-color:rgba(248,81,73,0.9)}}
+.acc-card.g{--ac:var(--green)}.acc-card.b{--ac:var(--blue)}.acc-card.r{--ac:var(--red);border-color:rgba(248,81,73,0.15)}.acc-card.gold{--ac:var(--gold)}.acc-card.p{--ac:var(--purple)}
 .acc-lbl{font-size:9px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .acc-val{font-size:1.25rem;font-weight:700;font-family:var(--mono);letter-spacing:-0.01em}
 .acc-val.g{color:var(--green)}.acc-val.b{color:var(--blue)}.acc-val.r{color:var(--red)}.acc-val.gold{color:var(--gold)}
@@ -89,8 +75,8 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .scard.buy::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent)}
 .scard.sell{border-color:rgba(248,81,73,0.25);background:linear-gradient(160deg,var(--bg2),rgba(248,81,73,0.04))}
 .scard.sell::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),transparent)}
-.scard.wait{opacity:0.65}
-.scard.scanning-card{opacity:0.4}
+.scard.wait{opacity:0.6}
+.scard.loading{opacity:0.4}
 
 .sc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .sc-pair{font-size:14px;font-weight:700;letter-spacing:0.03em;font-family:var(--mono)}
@@ -99,9 +85,7 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .sc-badge.buy{background:var(--gdim);color:var(--green);border:1px solid rgba(63,185,80,0.2)}
 .sc-badge.sell{background:var(--rdim);color:var(--red);border:1px solid rgba(248,81,73,0.2)}
 .sc-badge.wait{background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
-.sc-badge.scanning{background:var(--bg3);color:var(--muted);border:1px solid var(--border);animation:badgePulse 1.5s infinite}
-@keyframes badgePulse{0%,100%{opacity:0.4}50%{opacity:1}}
-.sc-badge.error{background:var(--rdim);color:var(--red)}
+.sc-badge.loading{background:var(--bg3);color:var(--muted)}
 
 .sc-price{font-size:1.2rem;font-weight:700;font-family:var(--mono);letter-spacing:-0.01em;margin-bottom:10px}
 
@@ -128,6 +112,7 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .sc-conf-fill.m{background:var(--gold)}
 .sc-conf-fill.l{background:var(--muted)}
 
+/* AI VERDICT */
 .sc-ai{background:rgba(57,197,207,0.05);border:1px solid rgba(57,197,207,0.12);border-radius:6px;padding:8px;margin-bottom:8px}
 .sc-ai-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
 .sc-ai-lbl{font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--cyan)}
@@ -139,18 +124,19 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 
 .sc-reason{font-size:10px;color:var(--muted);line-height:1.5;border-top:1px solid var(--border);padding-top:8px}
 
+/* SIZE ROW */
 .sc-size{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
 .sc-size-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
 .sc-size-val{font-size:11px;font-weight:700;font-family:var(--mono);color:var(--gold)}
 
+/* TRADE BTN */
 .sc-trade{width:100%;margin-top:8px;padding:8px;border-radius:6px;border:none;font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;transition:all 0.15s;letter-spacing:0.05em}
 .sc-trade.buy{background:var(--green);color:#000}
 .sc-trade.buy:hover{background:#52d468}
 .sc-trade.sell{background:var(--red);color:#fff}
 .sc-trade.sell:hover{opacity:0.85}
-.sc-trade:disabled{opacity:0.4;cursor:not-allowed}
 
-/* SKELETON */
+/* LOADING SKELETON */
 .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;height:12px;margin-bottom:6px}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
@@ -163,9 +149,7 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 
 /* OPEN POSITIONS */
 .pos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem}
-.pos-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;transition:all 0.2s}
-.pos-card.losing{border-color:rgba(248,81,73,0.25)}
-.pos-card.critical{border-color:rgba(248,81,73,0.5);background:rgba(248,81,73,0.03)}
+.pos-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px}
 .pos-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .pos-inst{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--gold)}
 .pos-dir{font-size:9px;font-weight:800;padding:2px 7px;border-radius:3px;letter-spacing:0.08em}
@@ -216,68 +200,66 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 <body>
 
 <nav>
-  <div class="nav-logo"><div class="nav-dot"></div>OANDA TRADING CENTER</div>
-  <div class="nav-links"><a href="index.html" class="nav-link active">Dashboard</a><a href="calculator.html" class="nav-link">Calculator</a><a href="positions.html" class="nav-link">Positions</a><a href="journal.html" class="nav-link">Journal</a><a href="risk.html" class="nav-link">Risk</a><a href="correlation.html" class="nav-link">Correlation</a></div>
+  <div class="nav-logo" style="white-space:nowrap"><div class="nav-dot"></div>OANDA TRADING CENTER</div>
+  <div class="nav-links">
+    <a href="index.html"      class="nav-link active">Dashboard</a>
+    <a href="calculator.html" class="nav-link">Calculator</a>
+    <a href="positions.html"  class="nav-link">Positions</a>
+    <a href="journal.html"    class="nav-link">Journal</a>
+    <a href="risk.html"       class="nav-link">Risk</a>
+  </div>
   <div class="nav-right">
     <div class="scan-status"><div class="scan-dot" id="scan-dot"></div><span id="scan-label">Initialising...</span></div>
-    <div class="nav-bal">Balance: <span id="nav-bal">â€”</span></div>
-    <div class="env-badge">LIVE</div>
+    <div class="nav-bal">Balance: <span id="nav-bal">&mdash;</span></div>
+    <div class="env-badge" id="env-badge">LIVE</div>
   </div>
 </nav>
 
 <div class="main">
 
-  <!-- MARGIN CALL BANNER -->
-  <div class="margin-banner" id="margin-banner">
-    <div class="margin-banner-icon">ðŸš¨</div>
-    <div class="margin-banner-text">
-      <div class="margin-banner-title">MARGIN CALL ACTIVE â€” Account at risk of forced closure</div>
-      <div class="margin-banner-sub" id="margin-banner-sub">Margin available critically low. Close losing positions immediately.</div>
-    </div>
-    <button class="margin-banner-btn" onclick="window.location.href='positions.html'">Manage Positions â†’</button>
-  </div>
-
   <!-- NEWS BAR -->
   <div class="news-bar" id="news-bar">
-    <div class="news-bar-lbl">âš ï¸ High Impact News</div>
+    <div class="news-bar-lbl">[!] High Impact News</div>
     <div class="news-items" id="news-items"></div>
   </div>
 
   <!-- ACCOUNT STRIP -->
   <div class="acc-strip">
-    <div class="acc-card g"><div class="acc-lbl">Balance</div><div class="acc-val g" id="a-bal">â€”</div><div class="acc-sub" id="a-cur">GBP</div></div>
-    <div class="acc-card b"><div class="acc-lbl">Net Asset Value</div><div class="acc-val b" id="a-nav">â€”</div><div class="acc-sub" id="a-upl">Unrealized â€”</div></div>
-    <div class="acc-card gold"><div class="acc-lbl">Today's P&L</div><div class="acc-val" id="a-pnl">â€”</div><div class="acc-sub" id="a-wr">0 trades</div></div>
-    <div class="acc-card" id="a-mcard"><div class="acc-lbl">Margin Available</div><div class="acc-val" id="a-mar">â€”</div><div class="acc-sub" id="a-marpct">â€”% of NAV</div></div>
-    <div class="acc-card p"><div class="acc-lbl">Open Positions</div><div class="acc-val gold" id="a-pos">â€”</div><div class="acc-sub" id="a-ts">â€”</div></div>
-    <div class="acc-card"><div class="acc-lbl">Last Scan</div><div class="acc-val" style="font-size:1rem;color:var(--muted2)" id="a-scan">â€”</div><div class="acc-sub">H4 signals</div></div>
+    <div class="acc-card g"><div class="acc-lbl">Balance</div><div class="acc-val g" id="a-bal">&mdash;</div><div class="acc-sub" id="a-cur">GBP</div></div>
+    <div class="acc-card b"><div class="acc-lbl">Net Asset Value</div><div class="acc-val b" id="a-nav">&mdash;</div><div class="acc-sub" id="a-upl">Unrealized &mdash;</div></div>
+    <div class="acc-card gold"><div class="acc-lbl">Today's P&amp;L</div><div class="acc-val" id="a-pnl">&mdash;</div><div class="acc-sub" id="a-wr">0 trades</div></div>
+    <div class="acc-card" id="a-mcard"><div class="acc-lbl">Margin Available</div><div class="acc-val" id="a-mar">&mdash;</div><div class="acc-sub" id="a-marpct">&mdash;% of NAV</div></div>
+    <div class="acc-card p"><div class="acc-lbl">Open Positions</div><div class="acc-val gold" id="a-pos">&mdash;</div><div class="acc-sub" id="a-ts">&mdash;</div></div>
+    <div class="acc-card"><div class="acc-lbl">Last Scan</div><div class="acc-val" style="font-size:1rem;color:var(--muted2)" id="a-scan">&mdash;</div><div class="acc-sub">H4 signals</div></div>
   </div>
 
   <!-- SIGNALS -->
   <div class="sec-hdr">
-    <div class="sec-title">ðŸ§  H4 AI Signals â€” GROQ Analysis</div>
-    <div class="sec-badge gold" id="sig-summary">Loading signals...</div>
+    <div class="sec-title"> H4 AI Signals &mdash; Gemini Analysis</div>
+    <div class="sec-badge gold" id="sig-summary">Scanning 15 instruments...</div>
   </div>
-  <div class="sig-grid" id="sig-grid"></div>
+  <div class="sig-grid" id="sig-grid">
+    <!-- Loading skeletons -->
+  </div>
 
   <!-- OPEN POSITIONS -->
   <div class="sec-hdr">
-    <div class="sec-title">ðŸ“Š Open Positions</div>
-    <div class="sec-badge gold" id="pos-count">â€”</div>
+    <div class="sec-title"> Open Positions</div>
+    <div class="sec-badge gold" id="pos-count">&mdash;</div>
   </div>
   <div class="pos-grid" id="pos-grid">
     <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);font-family:var(--mono);font-size:12px"><span class="spin"></span>Loading positions...</div>
   </div>
 
-</div>
+</div><!-- /main -->
 
 <!-- CONFIRM MODAL -->
-<div id="corr-warnings"></div>
+ <div id="corr-warnings"></div>
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-title" id="modal-title">Confirm Trade</div>
     <div class="modal-rows" id="modal-rows"></div>
-    <div class="modal-warn">âš ï¸ This places a REAL trade on your live Oanda account. Verify on TradingView first.</div>
+    <div class="modal-warn">[!] This places a REAL trade on your live Oanda account. Verify on TradingView first.</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeModal()">Cancel</button>
       <button class="modal-ok buy" id="modal-ok" onclick="executeTrade()">Confirm</button>
@@ -287,8 +269,8 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 
 <!-- TOAST -->
 <div class="toast" id="toast">
-  <span id="toast-icon">âœ…</span>
-  <span id="toast-msg">â€”</span>
+  <span id="toast-icon">[OK]</span>
+  <span id="toast-msg">&mdash;</span>
 </div>
 
 <script>
@@ -316,20 +298,15 @@ const INSTRUMENTS = [
 
 let pendingTrade = null;
 let accountBalance = 0;
-let accountMarginAvail = 0;
-// Cache signals so refresh doesn't re-fetch everything
-let cachedSignals = {};
-let signalsLoaded = false;
 
 function fmt(n,d=2){return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}
 
 function fmtP(inst,p){
-  if(p==null||p===undefined)return 'â€”';
+  if(!p&&p!==0)return '&mdash;';
   p=Number(p);
   if(inst.includes('JPY'))return p.toFixed(3);
-  if(inst.includes('XAU')||inst.includes('WTICO'))return p.toFixed(2);
-  if(inst.includes('XAG')||inst.includes('NATGAS')||inst.includes('CORN')||
-     inst.includes('SUGAR')||inst.includes('WHEAT')||inst.includes('SOYBN'))return p.toFixed(4);
+  if(inst.includes('XAU')||inst.includes('BCO')||inst.includes('WTICO'))return p.toFixed(2);
+  if(inst.includes('XAG')||inst.includes('NATGAS')||inst.includes('CORN')||inst.includes('SUGAR')||inst.includes('WHEAT')||inst.includes('SOYBN'))return p.toFixed(4);
   if(inst.includes('XPD')||inst.includes('XPT'))return p.toFixed(2);
   if(inst.includes('SPX')||inst.includes('NAS')||inst.includes('UK1')||inst.includes('DE3'))return p.toFixed(1);
   return p.toFixed(5);
@@ -337,148 +314,129 @@ function fmtP(inst,p){
 
 function calcUnits(balance, marginAvail, sl_pips, inst){
   if(!sl_pips||sl_pips<=0)return 100;
-  const risk = balance * 0.01;
-  const pipVal = inst.includes('XAU') ? 1 : 10;
-  const raw = Math.floor((risk / sl_pips) / pipVal * 10000);
-  return Math.max(100, Math.min(raw, Math.floor(marginAvail * 3)));
+  const risk=balance*0.01;
+  const pipVal=inst.includes('XAU')?1:10;
+  const raw=Math.floor((risk/sl_pips)/pipVal*10000);
+  return Math.max(100,Math.min(raw,Math.floor(marginAvail*3)));
 }
 
-// â”€â”€ BUILD SKELETON CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function buildSkeletonGrid(){
-  const grid = document.getElementById('sig-grid');
-  grid.innerHTML = INSTRUMENTS.map((inst,i) => `
-    <div class="scard scanning-card" id="scard-${inst.id}" style="animation-delay:${i*0.04}s">
+// ── RENDER SKELETON LOADING CARDS ────────────────────────────────────────────
+function renderSkeletons(){
+  const grid=document.getElementById('sig-grid');
+  grid.innerHTML=INSTRUMENTS.map((inst,i)=>`
+    <div class="scard loading" style="animation-delay:${i*0.05}s">
       <div class="sc-top">
         <div><div class="sc-pair">${inst.name}</div><div class="sc-cat">${inst.cat}</div></div>
-        <span class="sc-badge scanning">SCANNING</span>
+        <span class="sc-badge loading">SCANNING</span>
       </div>
-      <div class="skeleton" style="width:55%;height:22px;margin-bottom:10px"></div>
-      <div class="skeleton" style="width:100%;height:7px"></div>
-      <div class="skeleton" style="width:80%;height:7px;margin-top:4px"></div>
-      <div class="skeleton" style="width:90%;height:7px;margin-top:4px"></div>
+      <div class="skeleton" style="width:60%;height:24px;margin-bottom:10px"></div>
+      <div class="skeleton" style="width:100%;height:8px"></div>
+      <div class="skeleton" style="width:80%;height:8px"></div>
+      <div class="skeleton" style="width:90%;height:8px"></div>
     </div>
   `).join('');
 }
 
-// â”€â”€ RENDER A SINGLE SIGNAL CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function renderCard(inst, s){
-  const isBuy = s.signal==='BUY', isSell = s.signal==='SELL';
-  const isWait = !isBuy && !isSell;
-  const cc = isBuy?'buy':isSell?'sell':'wait';
-  const conf = s.confidence||0;
-  const confC = conf>70?'h':conf>40?'m':'l';
-  const units = (!isWait && accountBalance>0) ? calcUnits(accountBalance, accountMarginAvail, s.sl_pips, inst.id) : 0;
-  const ai = s.ai||{};
-  const aiVerdict = ai.verdict||'';
-  const aiClass = aiVerdict.includes('BUY')?'bull':aiVerdict.includes('SELL')?'bear':'neu';
-  const trendDn = s.trend==='BEARISH';
-  const isError = s.signal==='ERROR';
+// ── RENDER SIGNAL CARDS ───────────────────────────────────────────────────────
+function renderSignals(signals, account){
+  const grid=document.getElementById('sig-grid');
+  const bal=account?.balance||0;
+  const mar=account?.marginAvailable||0;
+  const active=INSTRUMENTS.filter(i=>signals[i.id]?.signal==='BUY'||signals[i.id]?.signal==='SELL');
+  const waiting=INSTRUMENTS.filter(i=>!active.find(a=>a.id===i.id));
+  const ordered=[...active,...waiting];
 
-  // Don't show trade button if margin is critically low
-  const marginOk = accountMarginAvail > 20;
+  const buys=active.filter(i=>signals[i.id]?.signal==='BUY').length;
+  const sells=active.filter(i=>signals[i.id]?.signal==='SELL').length;
+  document.getElementById('sig-summary').textContent=`${buys} BUY &middot; ${sells} SELL &middot; ${waiting.length} WAIT`;
+  document.getElementById('sig-summary').className=active.length>0?'sec-badge green':'sec-badge gold';
 
-  const levelsHtml = (!isWait && s.entry) ? `
-    <div class="sc-levels">
-      <div class="sc-lv"><div class="scl-lbl e">Entry</div><div class="scl-val">${fmtP(inst.id,s.entry)}</div></div>
-      <div class="sc-lv"><div class="scl-lbl s">SL</div><div class="scl-val">${fmtP(inst.id,s.sl)}</div></div>
-      <div class="sc-lv"><div class="scl-lbl t">TP</div><div class="scl-val">${fmtP(inst.id,s.tp)}</div></div>
-    </div>` : '';
+  grid.innerHTML=ordered.map((inst,idx)=>{
+    const s=signals[inst.id]||{signal:'WAIT',reasons:['No data']};
+    const isBuy=s.signal==='BUY', isSell=s.signal==='SELL', isWait=!isBuy&&!isSell;
+    const cc=isBuy?'buy':isSell?'sell':'wait';
+    const conf=s.confidence||0;
+    const confC=conf>70?'h':conf>40?'m':'l';
+    const units=(!isWait&&bal>0)?calcUnits(bal,mar,s.sl_pips,inst.id):0;
+    const ai=s.ai||{};
+    const aiVerdict=ai.verdict||'';
+    const aiClass=aiVerdict.includes('BUY')?'bull':aiVerdict.includes('SELL')?'bear':'neu';
+    const trendDn=s.trend==='BEARISH';
 
-  const aiHtml = ai.summary ? `
-    <div class="sc-ai">
-      <div class="sc-ai-hdr">
-        <span class="sc-ai-lbl">GROQ AI</span>
-        <span class="sc-ai-verdict ${aiClass}">${aiVerdict||'â€”'}</span>
+    const levelsHtml=(!isWait&&s.entry)?`
+      <div class="sc-levels">
+        <div class="sc-lv"><div class="scl-lbl e">Entry</div><div class="scl-val">${fmtP(inst.id,s.entry)}</div></div>
+        <div class="sc-lv"><div class="scl-lbl s">SL</div><div class="scl-val">${fmtP(inst.id,s.sl)}</div></div>
+        <div class="sc-lv"><div class="scl-lbl t">TP</div><div class="scl-val">${fmtP(inst.id,s.tp)}</div></div>
+      </div>`:'';
+
+    const aiHtml=ai.summary?`
+      <div class="sc-ai">
+        <div class="sc-ai-hdr">
+          <span class="sc-ai-lbl">GROQ AI</span>
+          <span class="sc-ai-verdict ${aiClass}">${aiVerdict||'&mdash;'}</span>
+        </div>
+        <div class="sc-ai-text">${(ai.summary||'').substring(0,120)}${(ai.summary||'').length>120?'...':''}</div>
+      </div>`:'';
+
+    const confHtml=(!isWait)?`
+      <div class="sc-conf">
+        <div class="sc-conf-row"><span>Confidence</span><span>${conf}%</span></div>
+        <div class="sc-conf-bar"><div class="sc-conf-fill ${confC}" style="width:${conf}%"></div></div>
+      </div>`:'';
+
+    const sizeHtml=(!isWait&&units)?`
+      <div class="sc-size">
+        <div class="sc-size-lbl">1% risk size</div>
+        <div class="sc-size-val">${units.toLocaleString()} units</div>
+      </div>`:'';
+
+    const tradeHtml=(!isWait&&s.entry)?`
+      <button class="sc-trade ${cc}" onclick="openTradeModal('${inst.id}','${inst.name}','${s.signal}',${s.entry},${s.sl},${s.tp},${units})">
+        ${isBuy?'BUY BUY':'SELL SELL'} ${inst.name}
+      </button>`:'';
+
+    const reason=(s.reasons||[]).slice(0,2).join(' &middot; ')||'Neutral &mdash; wait for setup';
+
+    return `<div class="scard ${cc}" style="animation-delay:${idx*0.04}s">
+      <div class="sc-top">
+        <div><div class="sc-pair">${inst.name}</div><div class="sc-cat">${inst.cat}</div></div>
+        <span class="sc-badge ${cc}">${s.signal==='BUY'?'BUY BUY':s.signal==='SELL'?'SELL SELL':'&mdash; WAIT'}</span>
       </div>
-      <div class="sc-ai-text">${(ai.summary||'').substring(0,120)}${(ai.summary||'').length>120?'â€¦':''}</div>
-    </div>` : '';
-
-  const confHtml = (!isWait) ? `
-    <div class="sc-conf">
-      <div class="sc-conf-row"><span>Confidence</span><span>${conf}%</span></div>
-      <div class="sc-conf-bar"><div class="sc-conf-fill ${confC}" style="width:${conf}%"></div></div>
-    </div>` : '';
-
-  const sizeHtml = (!isWait && units) ? `
-    <div class="sc-size">
-      <div class="sc-size-lbl">1% risk size</div>
-      <div class="sc-size-val">${units.toLocaleString()} units</div>
-    </div>` : '';
-
-  const tradeHtml = (!isWait && s.entry && marginOk) ? `
-    <button class="sc-trade ${cc}" onclick="openTradeModal('${inst.id}','${inst.name}','${s.signal}',${s.entry},${s.sl},${s.tp},${units})">
-      ${isBuy?'â–² BUY':'â–¼ SELL'} ${inst.name}
-    </button>` : (!isWait && s.entry && !marginOk) ? `
-    <button class="sc-trade ${cc}" disabled title="Margin too low to trade">
-      âš ï¸ Low Margin â€” Cannot Trade
-    </button>` : '';
-
-  const reason = isError ? `Error: ${s.error||'Unknown'}` :
-    (s.reasons||[]).slice(0,2).join(' Â· ') || 'Neutral â€” wait for setup';
-
-  const badgeHtml = isError
-    ? `<span class="sc-badge error">ERROR</span>`
-    : `<span class="sc-badge ${cc}">${isBuy?'â–² BUY':isSell?'â–¼ SELL':'â€” WAIT'}</span>`;
-
-  const el = document.getElementById(`scard-${inst.id}`);
-  if(!el) return;
-
-  el.className = `scard ${cc}`;
-  el.style.animationDelay = '0s';
-  el.innerHTML = `
-    <div class="sc-top">
-      <div><div class="sc-pair">${inst.name}</div><div class="sc-cat">${inst.cat}</div></div>
-      ${badgeHtml}
-    </div>
-    <div class="sc-price">${fmtP(inst.id, s.price)}</div>
-    ${levelsHtml}
-    <div class="sc-indicators">
-      ${s.rsi?`<span class="sc-ind rsi">RSI ${s.rsi}</span>`:''}
-      ${s.trend?`<span class="sc-ind trend ${trendDn?'dn':''}">${s.trend}</span>`:''}
-      ${s.macd?`<span class="sc-ind macd">MACD</span>`:''}
-      ${s.vol_surge?`<span class="sc-ind vol">VOLâ†‘</span>`:''}
-      ${s.session?`<span class="sc-ind sess">${s.session}</span>`:''}
-    </div>
-    ${confHtml}
-    ${aiHtml}
-    <div class="sc-reason">${reason}</div>
-    ${sizeHtml}
-    ${tradeHtml}
-  `;
+      <div class="sc-price">${fmtP(inst.id,s.price)}</div>
+      ${levelsHtml}
+      <div class="sc-indicators">
+        ${s.rsi?`<span class="sc-ind rsi">RSI ${s.rsi}</span>`:''}
+        ${s.trend?`<span class="sc-ind trend ${trendDn?'dn':''}">${s.trend}</span>`:''}
+        ${s.macd?`<span class="sc-ind macd">MACD</span>`:''}
+        ${s.vol_surge?`<span class="sc-ind vol">VOL</span>`:''}
+        ${s.session?`<span class="sc-ind sess">${s.session}</span>`:''}
+      </div>
+      ${confHtml}
+      ${aiHtml}
+      <div class="sc-reason">${reason}</div>
+      ${sizeHtml}
+      ${tradeHtml}
+    </div>`;
+  }).join('');
 }
 
-// â”€â”€ UPDATE SIGNAL SUMMARY BADGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function updateSummary(){
-  const buys  = Object.values(cachedSignals).filter(s=>s.signal==='BUY').length;
-  const sells = Object.values(cachedSignals).filter(s=>s.signal==='SELL').length;
-  const waits = Object.values(cachedSignals).filter(s=>s.signal==='WAIT'||s.signal==='ERROR').length;
-  const el = document.getElementById('sig-summary');
-  if(buys+sells > 0){
-    el.textContent = `${buys} BUY Â· ${sells} SELL Â· ${waits} WAIT`;
-    el.className = 'sec-badge green';
-  } else {
-    el.textContent = `${waits} WAIT â€” No active signals`;
-    el.className = 'sec-badge gold';
-  }
-}
-
-// â”€â”€ RENDER POSITIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RENDER POSITIONS ──────────────────────────────────────────────────────────
 function renderPositions(trades){
-  const grid = document.getElementById('pos-grid');
-  const count = document.getElementById('pos-count');
+  const grid=document.getElementById('pos-grid');
+  const count=document.getElementById('pos-count');
   if(!trades||trades.length===0){
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);font-family:var(--mono);font-size:12px">No open positions</div>';
-    count.textContent = '0 positions';
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);font-family:var(--mono);font-size:12px">No open positions</div>';
+    count.textContent='0 positions';
     return;
   }
-  count.textContent = trades.length + ' positions';
-  count.className = 'sec-badge gold';
-  grid.innerHTML = trades.map(t => {
-    const pnl = parseFloat(t.pnl||0);
-    const dir = t.direction==='LONG'?'long':'short';
-    const inst = (t.instrument||'').replace('_','/');
-    const isCritical = pnl < -50;
-    return `<div class="pos-card ${isCritical?'critical':pnl<0?'losing':''}">
+  count.textContent=trades.length+' positions';
+  count.className=trades.length>0?'sec-badge gold':'sec-badge';
+  grid.innerHTML=trades.map(t=>{
+    const pnl=parseFloat(t.pnl||0);
+    const dir=t.direction==='LONG'?'long':'short';
+    const inst=(t.instrument||'').replace('_','/');
+    return `<div class="pos-card">
       <div class="pos-top">
         <div>
           <div class="pos-inst">${inst}</div>
@@ -488,7 +446,7 @@ function renderPositions(trades){
       </div>
       <div class="pos-pnl ${pnl>=0?'pos':'neg'}">${pnl>=0?'+':''}$${fmt(pnl)}</div>
       <div class="pos-meta">
-        <span>Entry: ${t.entry||'â€”'}</span>
+        <span>Entry: ${t.entry||'&mdash;'}</span>
         <span class="pos-sl">SL: ${t.sl}</span>
         <span class="pos-tp">TP: ${t.tp}</span>
       </div>
@@ -497,160 +455,42 @@ function renderPositions(trades){
   }).join('');
 }
 
-// â”€â”€ ACCOUNT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ACCOUNT ───────────────────────────────────────────────────────────────────
 function renderAccount(acc, pnl){
-  accountBalance = parseFloat(acc.balance||0);
-  const nav = parseFloat(acc.NAV||acc.nav||0);
-  const upl = parseFloat(acc.unrealizedPL||0);
-  const mar = parseFloat(acc.marginAvailable||0);
-  const mpct = nav>0 ? mar/nav*100 : 0;
-  accountMarginAvail = mar;
+  accountBalance=parseFloat(acc.balance||0);
+  const nav=parseFloat(acc.NAV||acc.nav||0);
+  const upl=parseFloat(acc.unrealizedPL||0);
+  const mar=parseFloat(acc.marginAvailable||0);
+  const mpct=nav>0?mar/nav*100:0;
 
-  document.getElementById('a-bal').textContent = '$'+fmt(accountBalance);
-  document.getElementById('a-cur').textContent = acc.currency||'GBP';
-  document.getElementById('a-nav').textContent = '$'+fmt(nav);
-  document.getElementById('a-upl').textContent = 'Unrealized: '+(upl>=0?'+':'')+'$'+fmt(upl);
-  document.getElementById('a-upl').style.color = upl>=0?'var(--green)':'var(--red)';
-  document.getElementById('nav-bal').textContent = '$'+fmt(accountBalance);
+  document.getElementById('a-bal').textContent='$'+fmt(accountBalance);
+  document.getElementById('a-cur').textContent=acc.currency||'USD';
+  document.getElementById('a-nav').textContent='$'+fmt(nav);
+  document.getElementById('a-upl').textContent='Unrealized: '+(upl>=0?'+':'')+'$'+fmt(upl);
+  document.getElementById('a-upl').style.color=upl>=0?'var(--green)':'var(--red)';
+  document.getElementById('nav-bal').textContent='$'+fmt(accountBalance);
 
-  const pe = document.getElementById('a-pnl');
-  pe.textContent = (pnl.total_pnl>=0?'+':'')+'$'+fmt(pnl.total_pnl);
-  pe.className = 'acc-val '+(pnl.total_pnl>=0?'g':'r');
-  document.getElementById('a-wr').textContent = pnl.trade_count+' trades Â· '+pnl.win_rate+'% win';
+  const pe=document.getElementById('a-pnl');
+  pe.textContent=(pnl.total_pnl>=0?'+':'')+'$'+fmt(pnl.total_pnl);
+  pe.className='acc-val '+(pnl.total_pnl>=0?'g':'r');
+  document.getElementById('a-wr').textContent=pnl.trade_count+' trades &middot; '+pnl.win_rate+'% win';
 
-  const me = document.getElementById('a-mar');
-  me.textContent = '$'+fmt(mar);
-  me.className = 'acc-val '+(mpct<5?'r':mpct<20?'gold':'g');
-  document.getElementById('a-marpct').textContent = fmt(mpct,1)+'% of NAV';
-
-  const mcard = document.getElementById('a-mcard');
-  mcard.className = 'acc-card '+(mpct<5?'warn':mpct<20?'gold':'g');
-
-  document.getElementById('a-pos').textContent = acc.openTradeCount||0;
-  document.getElementById('a-ts').textContent = new Date().toUTCString().split(' ')[4]+' UTC';
-
-  // Margin call banner
-  const banner = document.getElementById('margin-banner');
-  const inMarginCall = acc.marginCallEnterTime && mar < 50;
-  if(inMarginCall){
-    banner.classList.add('show');
-    document.getElementById('margin-banner-sub').textContent =
-      `Margin available: $${fmt(mar)} (${fmt(mpct,1)}% of NAV). Entered margin call: ${new Date(acc.marginCallEnterTime).toLocaleString()}`;
-  } else {
-    banner.classList.remove('show');
-  }
+  const me=document.getElementById('a-mar');
+  me.textContent='$'+fmt(mar);
+  me.className='acc-val '+(mpct<5?'r':mpct<20?'gold':'g');
+  document.getElementById('a-marpct').textContent=fmt(mpct,1)+'% of NAV';
+  document.getElementById('a-mcard').className='acc-card '+(mpct<5?'r':mpct<20?'gold':'g');
+  document.getElementById('a-pos').textContent=acc.openTradeCount||0;
+  document.getElementById('a-ts').textContent=new Date().toUTCString().split(' ')[4]+' UTC';
 }
 
-// â”€â”€ FETCH ACCOUNT + POSITIONS (fast, no AI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function fetchFast(){
-  try{
-    const [accR, trR] = await Promise.all([
-      fetch(`${API}/api/account`, {signal: AbortSignal.timeout(10000)}),
-      fetch(`${API}/api/trades`,  {signal: AbortSignal.timeout(10000)})
-    ]);
-    const accD = await accR.json();
-    const trD  = await trR.json();
-    if(accD.ok) renderAccount(accD.account, accD.pnl||{total_pnl:0,trade_count:0,win_rate:0});
-    if(trD.ok){
-      renderPositions(trD.trades.map(t=>({
-        id: t.id, instrument: t.instrument,
-        units: Math.abs(parseFloat(t.currentUnits||0)),
-        entry: t.price,
-        pnl: parseFloat(t.unrealizedPL||0),
-        sl: t.stopLossOrder?.price||'â€”',
-        tp: t.takeProfitOrder?.price||'â€”',
-        direction: parseFloat(t.currentUnits||0)>0?'LONG':'SHORT'
-      })));
-    }
-  } catch(e){
-    console.error('Fast fetch error:', e);
-    setScanStatus('error', 'Connection error â€” check Render is running');
-  }
-}
-
-// â”€â”€ FETCH SIGNALS (slow, with AI) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-async function fetchSignals(){
-  setScanStatus('scanning', 'Running GROQ AI analysis...');
-  try{
-    // Use a longer timeout for signals â€” they take time
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
-
-    const r = await fetch(`${API}/api/signals`, {signal: controller.signal});
-    clearTimeout(timeout);
-
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d = await r.json();
-
-    if(d.ok && d.signals){
-      cachedSignals = d.signals;
-      signalsLoaded = true;
-
-      // Re-sort: BUY/SELL first, then WAIT
-      const ordered = [
-        ...INSTRUMENTS.filter(i => d.signals[i.id]?.signal==='BUY'||d.signals[i.id]?.signal==='SELL'),
-        ...INSTRUMENTS.filter(i => !['BUY','SELL'].includes(d.signals[i.id]?.signal))
-      ];
-
-      // Rebuild grid in new order
-      const grid = document.getElementById('sig-grid');
-      grid.innerHTML = ordered.map((inst,i) =>
-        `<div class="scard scanning-card" id="scard-${inst.id}" style="animation-delay:${i*0.04}s">
-          <div class="sc-top">
-            <div><div class="sc-pair">${inst.name}</div><div class="sc-cat">${inst.cat}</div></div>
-            <span class="sc-badge scanning">LOADING</span>
-          </div>
-        </div>`
-      ).join('');
-
-      // Render each card with a small stagger for smooth animation
-      ordered.forEach((inst, i) => {
-        setTimeout(() => {
-          renderCard(inst, d.signals[inst.id] || {signal:'WAIT',reasons:[]});
-        }, i * 60);
-      });
-
-      updateSummary();
-      document.getElementById('a-scan').textContent = new Date().toUTCString().split(' ')[4];
-      setScanStatus('done', 'Scan complete â€” refreshes in 5min');
-      setTimeout(() => setScanStatus('idle', 'Next scan in 5min'), 3000);
-    }
-  } catch(e){
-    if(e.name === 'AbortError'){
-      setScanStatus('error', 'Scan timed out â€” signals may still be loading on server');
-    } else {
-      setScanStatus('error', 'Signal fetch failed: ' + e.message);
-    }
-    console.error('Signal fetch error:', e);
-    // Show error state on all scanning cards
-    INSTRUMENTS.forEach(inst => {
-      const el = document.getElementById(`scard-${inst.id}`);
-      if(el && el.classList.contains('scanning-card')){
-        el.innerHTML = `
-          <div class="sc-top">
-            <div><div class="sc-pair">${inst.name}</div><div class="sc-cat">${inst.cat}</div></div>
-            <span class="sc-badge error">ERROR</span>
-          </div>
-          <div class="sc-reason" style="margin-top:8px">Failed to load â€” retry in 5min</div>`;
-      }
-    });
-  }
-}
-
-function setScanStatus(state, label){
-  const dot = document.getElementById('scan-dot');
-  const lbl = document.getElementById('scan-label');
-  dot.className = 'scan-dot ' + (state==='scanning'?'scanning':state==='done'?'done':state==='error'?'error':'');
-  lbl.textContent = label;
-}
-
-// â”€â”€ TRADE MODAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function openTradeModal(instId,instName,direction,entry,sl,tp,units){
-  pendingTrade = {instId,instName,direction,entry,sl,tp,units};
-  const isBuy = direction==='BUY';
-  document.getElementById('modal-title').innerHTML =
-    `${isBuy?'ðŸŸ¢':'ðŸ”´'} Confirm ${direction} â€” ${instName}`;
-  document.getElementById('modal-rows').innerHTML = `
+// ── TRADE MODAL ───────────────────────────────────────────────────────────────
+function openTradeModal(instId, instName, direction, entry, sl, tp, units){
+  pendingTrade={instId,instName,direction,entry,sl,tp,units};
+  const isBuy=direction==='BUY';
+  document.getElementById('modal-title').innerHTML=
+    `${isBuy?'':''} Confirm ${direction} &mdash; ${instName}`;
+  document.getElementById('modal-rows').innerHTML=`
     <div class="modal-row"><span class="modal-row-lbl">Instrument</span><span class="modal-row-val" style="color:var(--gold)">${instName}</span></div>
     <div class="modal-row"><span class="modal-row-lbl">Direction</span><span class="modal-row-val" style="color:${isBuy?'var(--green)':'var(--red)'}">${direction}</span></div>
     <div class="modal-row"><span class="modal-row-lbl">Units</span><span class="modal-row-val">${Number(units).toLocaleString()}</span></div>
@@ -659,87 +499,116 @@ function openTradeModal(instId,instName,direction,entry,sl,tp,units){
     <div class="modal-row"><span class="modal-row-lbl">Take Profit</span><span class="modal-row-val" style="color:var(--green)">${fmtP(instId,tp)}</span></div>
     <div class="modal-row"><span class="modal-row-lbl">Risk (1%)</span><span class="modal-row-val" style="color:var(--cyan)">$${fmt(accountBalance*0.01)}</span></div>
   `;
-  const ok = document.getElementById('modal-ok');
-  ok.textContent = `CONFIRM ${direction}`;
-  ok.className = `modal-ok ${direction.toLowerCase()}`;
+  const ok=document.getElementById('modal-ok');
+  ok.textContent=`CONFIRM ${direction}`;
+  ok.className=`modal-ok ${direction.toLowerCase()}`;
   document.getElementById('modal').classList.add('show');
 }
 
 function closeModal(){document.getElementById('modal').classList.remove('show')}
 
 async function executeTrade(){
-  if(!pendingTrade) return;
-  const t = pendingTrade;
-  const ok = document.getElementById('modal-ok');
-  ok.textContent = 'Placing...'; ok.disabled = true;
+  if(!pendingTrade)return;
+  const t=pendingTrade;
+  const ok=document.getElementById('modal-ok');
+  ok.textContent='Placing...';ok.disabled=true;
   try{
-    const r = await fetch(`${API}/api/place-order`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({instrument:t.instId,direction:t.direction,units:t.units,stop_loss:t.sl,take_profit:t.tp})
+    const r=await fetch(`${API}/api/place-order`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({instrument:t.instId,direction:t.direction,units:t.units,stop_loss:t.sl,take_profit:t.tp})
     });
-    const d = await r.json();
+    const d=await r.json();
     closeModal();
-    if(d.ok){
-      showToast('success', `âœ… ${t.direction} ${t.instName} â€” ${Number(t.units).toLocaleString()} units placed`);
-      fetchFast();
-    } else {
-      showToast('error', 'âŒ '+(d.detail||'Order failed'));
-    }
-  } catch(e){ closeModal(); showToast('error','âŒ '+e.message); }
-  finally { ok.textContent = `CONFIRM ${pendingTrade?.direction||''}`; ok.disabled = false; }
+    if(d.ok){showToast('success',`[OK] ${t.direction} ${t.instName} &mdash; ${Number(t.units).toLocaleString()} units placed`);fetchAll();}
+    else showToast('error','[ERR] '+(d.detail||'Order failed'));
+  }catch(e){closeModal();showToast('error','[ERR] '+e.message);}
+  finally{ok.textContent=`CONFIRM ${pendingTrade?.direction||''}`;ok.disabled=false;}
 }
 
 async function closePosition(tradeId, instName){
-  if(!confirm(`Close ${instName} position?`)) return;
+  if(!confirm(`Close ${instName} position?`))return;
   try{
-    const r = await fetch(`${API}/api/close-trade`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({trade_id: tradeId})
-    });
-    const d = await r.json();
-    if(d.ok){ showToast('success',`âœ… ${instName} closed`); setTimeout(fetchFast, 1000); }
-    else showToast('error','âŒ Close failed');
-  } catch(e){ showToast('error','âŒ '+e.message); }
+    const r=await fetch(`${API}/api/close-trade`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trade_id:tradeId})});
+    const d=await r.json();
+    if(d.ok){showToast('success',`[OK] ${instName} position closed`);setTimeout(fetchAll,1000);}
+    else showToast('error','[ERR] Close failed');
+  }catch(e){showToast('error','[ERR] '+e.message);}
 }
 
-function showToast(type, msg){
-  const t = document.getElementById('toast');
-  document.getElementById('toast-msg').textContent = msg;
-  t.className = `toast ${type} show`;
-  setTimeout(() => t.classList.remove('show'), 5000);
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function showToast(type,msg){
+  const t=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  t.className=`toast ${type} show`;
+  setTimeout(()=>t.classList.remove('show'),5000);
 }
 
+// ── NEWS ──────────────────────────────────────────────────────────────────────
 async function fetchNews(){
   try{
-    const r = await fetch(`${API}/api/news`, {signal: AbortSignal.timeout(8000)});
-    const d = await r.json();
-    if(!d.ok || !d.news?.length) return;
-    document.getElementById('news-bar').className = 'news-bar show';
-    document.getElementById('news-items').innerHTML =
-      d.news.slice(0,5).map(n=>`<span class="news-item">${n.title} (${n.country}) Â· ${n.date||n.time_utc||''}</span>`).join('');
-  } catch(e){}
+    const r=await fetch(`${API}/api/news`);
+    const d=await r.json();
+    if(!d.ok||!d.news?.length)return;
+    const bar=document.getElementById('news-bar');
+    const items=document.getElementById('news-items');
+    bar.className='news-bar show';
+    items.innerHTML=d.news.slice(0,5).map(n=>`<span class="news-item">${n.title} (${n.country}) &middot; ${n.date}</span>`).join('');
+  }catch(e){}
 }
 
-// â”€â”€ STARTUP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-buildSkeletonGrid();
-setScanStatus('scanning', 'Loading account...');
+// ── MAIN FETCH ────────────────────────────────────────────────────────────────
+async function fetchAll(){
+  const scanDot=document.getElementById('scan-dot');
+  const scanLbl=document.getElementById('scan-label');
+  scanDot.className='scan-dot scanning';
+  scanLbl.textContent='Scanning H4...';
 
-// Step 1: Load account + positions immediately (fast)
-fetchFast().then(() => {
-  setScanStatus('scanning', 'Running GROQ AI on 15 instruments...');
-  // Step 2: Then load signals in background (slow)
-  fetchSignals();
-});
+  try{
+    // Fetch account fast
+    const accR=await fetch(`${API}/api/account`);
+    const accD=await accR.json();
+    if(accD.ok) renderAccount(accD.account, accD.pnl);
 
-// Also fetch news in parallel
+    // Fetch trades fast
+    const trR=await fetch(`${API}/api/trades`);
+    const trD=await trR.json();
+    if(trD.ok){
+      renderPositions(trD.trades.map(t=>({
+        id:t.id, instrument:t.instrument,
+        units:Math.abs(parseFloat(t.currentUnits||0)),
+        entry:t.price,
+        pnl:parseFloat(t.unrealizedPL||0),
+        sl:t.stopLossOrder?.price||'&mdash;',
+        tp:t.takeProfitOrder?.price||'&mdash;',
+        direction:parseFloat(t.currentUnits||0)>0?'LONG':'SHORT'
+      })));
+    }
+
+    // Fetch signals (slower &mdash; includes GROQ AI)
+    scanLbl.textContent='Running GROQ AI...';
+    const sigR=await fetch(`${API}/api/signals`);
+    const sigD=await sigR.json();
+    if(sigD.ok&&accD.ok){
+      renderSignals(sigD.signals, accD.account);
+      document.getElementById('a-scan').textContent=new Date().toUTCString().split(' ')[4];
+    }
+
+    scanDot.className='scan-dot done';
+    scanLbl.textContent='Scan complete';
+    setTimeout(()=>{scanDot.className='scan-dot';scanLbl.textContent='Next scan in 5min';},3000);
+
+  }catch(e){
+    scanDot.className='scan-dot';
+    scanLbl.textContent='Connection error';
+    console.error(e);
+  }
+}
+
+// ── STARTUP ───────────────────────────────────────────────────────────────────
+renderSkeletons();
 fetchNews();
-
-// Auto-refresh: fast data every 30s, signals every 5min
-setInterval(fetchFast, 30000);
-setInterval(() => {
-  if(!document.hidden) fetchSignals();
-}, 300000);
+fetchAll();
+setInterval(fetchAll, 300000); // 5 minutes
 </script>
 </body>
 </html>
-
