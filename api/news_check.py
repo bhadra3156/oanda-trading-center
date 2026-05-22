@@ -1,280 +1,185 @@
 """
-news_check.py  —  News Blackout System v3
-Tries multiple free sources. Falls back to a smart weekly schedule.
-Never returns empty — always protects the trader.
+news_check.py — Economic calendar news blackout checker
+Uses FMP API (free tier) or falls back to hardcoded schedule
 """
 
-import json
+import os
 import logging
-import urllib.request
-import urllib.error
 from datetime import datetime, timedelta
+
+import requests
 
 logger = logging.getLogger(__name__)
 
-BLACKOUT_MINUTES  = 30
-CACHE_TTL_MINUTES = 180
+FMP_API_KEY = os.getenv("FMP_API_KEY", "")
 
+# Instruments mapped to currencies for news filtering
 INSTRUMENT_CURRENCIES = {
-    "EUR_USD":    ["USD","EUR"],
-    "GBP_JPY":    ["GBP","JPY"],
-    "XAU_USD":    ["USD","Gold","XAU"],
-    "XAG_USD":    ["USD","Silver","XAG"],
-    "XPD_USD":    ["USD","Palladium"],
-    "NATGAS_USD": ["USD","Gas","EIA","Energy"],
-    "WTICO_USD":  ["USD","Oil","EIA","OPEC","Crude"],
-    "CORN_USD":   ["USD","USDA","Corn","Grain"],
-    "SUGAR_USD":  ["USD","Sugar"],
-    "WHEAT_USD":  ["USD","USDA","Wheat","Grain"],
-    "SOYBN_USD":  ["USD","USDA","Soy","Grain"],
-    "SPX500_USD": ["USD","SP500","Fed","FOMC","CPI","NFP","GDP"],
-    "NAS100_USD": ["USD","Fed","FOMC","CPI","NFP","GDP"],
-    "UK100_GBP":  ["GBP","BOE","UK","CPI","GDP"],
-    "DE30_EUR":   ["EUR","ECB","Germany","CPI","GDP"],
+    "EUR_USD":   ["EUR", "USD"],
+    "GBP_JPY":   ["GBP", "JPY"],
+    "XAU_USD":   ["USD"],
+    "XAG_USD":   ["USD"],
+    "XPD_USD":   ["USD"],
+    "NATGAS_USD":["USD"],
+    "WTICO_USD": ["USD"],
+    "CORN_USD":  ["USD"],
+    "SUGAR_USD": ["USD"],
+    "WHEAT_USD": ["USD"],
+    "SOYBN_USD": ["USD"],
+    "SPX500_USD":["USD"],
+    "NAS100_USD":["USD"],
+    "UK100_GBP": ["GBP"],
+    "DE30_EUR":  ["EUR"],
 }
 
-UNIVERSAL_KEYWORDS = [
-    "Non-Farm","NFP","FOMC","Federal Reserve","Fed Rate",
-    "Interest Rate Decision","CPI","Inflation","GDP","Employment Change",
-    "Unemployment","ECB","BOE","BOJ","RBA","SNB","RBNZ",
-    "Jackson Hole","Powell","Lagarde","Central Bank",
-    "Quantitative","Rate Decision","Monetary Policy",
+# Fallback high-impact news schedule (UTC times)
+HARDCODED_EVENTS = [
+    {"title": "US CPI",              "country": "USD", "impact": "High", "hour": 13, "minute": 30, "weekday": None},
+    {"title": "US NFP",              "country": "USD", "impact": "High", "hour": 13, "minute": 30, "weekday": 4},
+    {"title": "FOMC Rate Decision",  "country": "USD", "impact": "High", "hour": 19, "minute": 0,  "weekday": None},
+    {"title": "ECB Rate Decision",   "country": "EUR", "impact": "High", "hour": 13, "minute": 15, "weekday": None},
+    {"title": "BOE Rate Decision",   "country": "GBP", "impact": "High", "hour": 12, "minute": 0,  "weekday": None},
+    {"title": "US GDP",              "country": "USD", "impact": "High", "hour": 13, "minute": 30, "weekday": None},
+    {"title": "EIA Oil Inventories", "country": "USD", "impact": "High", "hour": 15, "minute": 30, "weekday": 2},
+    {"title": "US Retail Sales",     "country": "USD", "impact": "High", "hour": 13, "minute": 30, "weekday": None},
+    {"title": "US PPI",              "country": "USD", "impact": "High", "hour": 13, "minute": 30, "weekday": None},
+    {"title": "UK CPI",              "country": "GBP", "impact": "High", "hour": 7,  "minute": 0,  "weekday": None},
+    {"title": "EU CPI",              "country": "EUR", "impact": "High", "hour": 10, "minute": 0,  "weekday": None},
+    {"title": "Japan BOJ Decision",  "country": "JPY", "impact": "High", "hour": 3,  "minute": 0,  "weekday": None},
+    {"title": "US JOLTS",            "country": "USD", "impact": "High", "hour": 14, "minute": 0,  "weekday": None},
+    {"title": "ADP Employment",      "country": "USD", "impact": "High", "hour": 13, "minute": 15, "weekday": 2},
 ]
 
-_cache = {"data": [], "fetched_at": None}
+BLACKOUT_MINUTES = 30
 
 
-def _try_trading_economics():
-    try:
-        now = datetime.utcnow()
-        from_date = now.strftime("%Y-%m-%d")
-        to_date   = (now + timedelta(days=7)).strftime("%Y-%m-%d")
-        url = (f"https://api.tradingeconomics.com/calendar/country/all"
-               f"/{from_date}/{to_date}?c=guest:guest&f=json")
-        req = urllib.request.Request(
-            url, headers={"User-Agent":"Mozilla/5.0","Accept":"application/json"})
-        with urllib.request.urlopen(req, timeout=8) as r:
-            data = json.loads(r.read())
-        events = []
-        for e in data:
-            imp = str(e.get("importance","0"))
-            if imp not in ("2","3","high","High","3.0","2.0"):
-                continue
-            events.append({
-                "title":   e.get("event",""),
-                "country": e.get("country",""),
-                "date":    e.get("date","")[:10] if e.get("date") else "",
-                "time":    e.get("date","")[11:16] if e.get("date","") and len(e.get("date",""))>10 else "",
-                "impact":  "High",
-                "source":  "trading_economics",
-            })
-        if events:
-            logger.info(f"Trading Economics: {len(events)} events")
-        return events
-    except Exception as e:
-        logger.debug(f"Trading Economics failed: {e}")
-        return []
-
-
-def _try_forexfactory():
-    urls = [
-        "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
-        "https://nfs.faireconomy.media/ff_calendar_nextweek.json",
-    ]
-    events = []
-    for url in urls:
+def get_all_upcoming_events(hours: int = 24) -> list:
+    """
+    Returns upcoming high-impact events in the next N hours.
+    Tries FMP API first, falls back to hardcoded schedule.
+    """
+    if FMP_API_KEY:
         try:
-            req = urllib.request.Request(url, headers={
-                "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                               "AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"),
-                "Accept":          "application/json, */*",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Referer":         "https://www.forexfactory.com/",
-                "Cache-Control":   "no-cache",
-            })
-            with urllib.request.urlopen(req, timeout=6) as r:
-                data = json.loads(r.read())
-            high = [e for e in data if e.get("impact") == "High"]
-            events.extend(high)
-        except urllib.error.HTTPError as e:
-            logger.debug(f"ForexFactory HTTP {e.code}")
+            return _fetch_fmp_events(hours)
         except Exception as e:
-            logger.debug(f"ForexFactory error: {e}")
-    if events:
-        logger.info(f"ForexFactory: {len(events)} events")
-    return events
+            logger.warning(f"FMP calendar failed, using fallback: {e}")
+
+    return _get_hardcoded_events(hours)
 
 
-def _get_smart_schedule():
-    now     = datetime.utcnow()
-    today   = now.strftime("%Y-%m-%d")
-    weekday = now.weekday()
-    events  = []
-    if weekday < 5:
-        events.append({"title":"US Economic Data Release Window","country":"USD",
-                        "impact":"High","date":today,"time":"13:30","source":"schedule"})
-        events.append({"title":"US Economic Data / Fed Speakers","country":"USD",
-                        "impact":"High","date":today,"time":"15:00","source":"schedule"})
-    if weekday == 2:
-        events.append({"title":"EIA Crude Oil Inventories","country":"USD",
-                        "impact":"High","date":today,"time":"15:30","source":"schedule"})
-    if weekday == 3:
-        events.append({"title":"US Initial Jobless Claims","country":"USD",
-                        "impact":"High","date":today,"time":"13:30","source":"schedule"})
-    if weekday == 4:
-        events.append({"title":"Non-Farm Payrolls (NFP) — potential release","country":"USD",
-                        "impact":"High","date":today,"time":"13:30","source":"schedule"})
-    return events
-
-
-def _parse_time(event):
-    date_str = event.get("date","")
-    time_str = event.get("time","")
-    if not date_str:
-        return None
-    try:
-        if "T" in date_str:
-            return datetime.strptime(date_str[:16], "%Y-%m-%dT%H:%M")
-        if time_str and ":" in time_str:
-            for fmt in ["%m-%d-%Y %I:%M%p","%Y-%m-%d %H:%M"]:
-                try:
-                    dt = datetime.strptime(f"{date_str} {time_str}", fmt)
-                    if "am" in time_str.lower() or "pm" in time_str.lower():
-                        dt = dt + timedelta(hours=5)
-                    return dt
-                except ValueError:
-                    continue
-        for fmt in ["%Y-%m-%d","%m-%d-%Y","%m/%d/%Y"]:
-            try:
-                return datetime.strptime(date_str, fmt).replace(hour=13, minute=30)
-            except ValueError:
-                continue
-    except Exception:
-        pass
-    return None
-
-
-def _affects(event, instrument):
-    title   = event.get("title","").upper()
-    country = event.get("country","").upper()
-    for kw in UNIVERSAL_KEYWORDS:
-        if kw.upper() in title:
-            return True
-    for token in INSTRUMENT_CURRENCIES.get(instrument, ["USD"]):
-        if token.upper() in title or token.upper() in country:
-            return True
-    return False
-
-
-def _fetch():
-    global _cache
+def check_news_blackout(instrument: str) -> dict:
+    """
+    Check if an instrument is in a news blackout window.
+    Returns dict with blackout status and relevant events.
+    """
+    currencies = INSTRUMENT_CURRENCIES.get(instrument, ["USD"])
     now = datetime.utcnow()
-    if (_cache["fetched_at"] and
-            (now - _cache["fetched_at"]).total_seconds() < CACHE_TTL_MINUTES * 60
-            and _cache["data"]):
-        return _cache["data"]
+    events = get_all_upcoming_events(hours=1)
 
-    events = _try_trading_economics()
-    if not events:
-        events = _try_forexfactory()
-        if not events:
-            logger.warning("All live news sources failed — using smart schedule only")
-
-    events.extend(_get_smart_schedule())
-
-    seen, unique = set(), []
-    for e in events:
-        key = f"{e.get('title','')[:30]}{e.get('date','')}"
-        if key not in seen:
-            seen.add(key); unique.append(e)
-
-    _cache = {"data": unique, "fetched_at": now}
-    logger.info(f"News cache: {len(unique)} events")
-    return unique
-
-
-def check_news_blackout(instrument):
-    now    = datetime.utcnow()
-    events = _fetch()
-    blocked_event = None
-    min_delta     = None
-    upcoming      = []
+    active_blackouts = []
+    upcoming_warnings = []
 
     for event in events:
-        if not _affects(event, instrument):
+        country = event.get("country", "")
+        if country not in currencies:
             continue
-        et = _parse_time(event)
-        if not et:
-            continue
-        delta = (et - now).total_seconds() / 60
 
-        if 0 < delta <= 1440:
-            upcoming.append({
-                "title":       event.get("title",""),
-                "country":     event.get("country",""),
-                "time_utc":    et.strftime("%H:%M UTC"),
-                "date":        et.strftime("%Y-%m-%d"),
-                "minutes":     int(delta),
-                "in_blackout": delta <= BLACKOUT_MINUTES,
-                "source":      event.get("source",""),
+        # Parse event time
+        event_time_str = event.get("time_utc") or event.get("date") or ""
+        try:
+            if "T" in event_time_str:
+                event_time = datetime.fromisoformat(event_time_str.replace("Z", ""))
+            else:
+                # Try "YYYY-MM-DD HH:MM UTC" format
+                clean = event_time_str.replace(" UTC", "").strip()
+                event_time = datetime.strptime(clean, "%Y-%m-%d %H:%M")
+        except Exception:
+            continue
+
+        minutes_away = (event_time - now).total_seconds() / 60
+
+        if -BLACKOUT_MINUTES <= minutes_away <= BLACKOUT_MINUTES:
+            active_blackouts.append({
+                "title":       event.get("title"),
+                "country":     country,
+                "minutes_away": round(minutes_away, 1),
+                "time_utc":    event_time_str,
+            })
+        elif 0 < minutes_away <= 60:
+            upcoming_warnings.append({
+                "title":       event.get("title"),
+                "country":     country,
+                "minutes_away": round(minutes_away, 1),
+                "time_utc":    event_time_str,
             })
 
-        if -BLACKOUT_MINUTES <= delta <= BLACKOUT_MINUTES:
-            if min_delta is None or abs(delta) < abs(min_delta):
-                min_delta     = delta
-                blocked_event = event
-
-    upcoming.sort(key=lambda x: x["minutes"])
-
-    if blocked_event:
-        et_b   = _parse_time(blocked_event)
-        title  = blocked_event.get("title","High-impact event")
-        d      = int(min_delta)
-        timing = f"in {d} min" if d >= 0 else f"{abs(d)} min ago"
-        return {
-            "blocked":          True,
-            "reason":           f"News blackout — {title} ({timing})",
-            "event_title":      title,
-            "event_time":       et_b.strftime("%H:%M UTC") if et_b else "—",
-            "minutes_to_event": d,
-            "upcoming_events":  upcoming[:5],
-        }
+    in_blackout = len(active_blackouts) > 0
 
     return {
-        "blocked":          False,
-        "reason":           "",
-        "event_title":      "",
-        "event_time":       "",
-        "minutes_to_event": None,
-        "upcoming_events":  upcoming[:5],
+        "instrument":        instrument,
+        "in_blackout":       in_blackout,
+        "active_blackouts":  active_blackouts,
+        "upcoming_warnings": upcoming_warnings,
+        "message": (
+            f"BLACKOUT: {active_blackouts[0]['title']} in {active_blackouts[0]['minutes_away']:.0f} min"
+            if in_blackout else "Clear to trade"
+        ),
     }
 
 
-def get_all_upcoming_events(hours=24):
-    now    = datetime.utcnow()
-    events = _fetch()
-    result = []
-    seen   = set()
-    for event in events:
-        et = _parse_time(event)
-        if not et:
+def _fetch_fmp_events(hours: int) -> list:
+    """Fetch events from Financial Modeling Prep API."""
+    now   = datetime.utcnow()
+    end   = now + timedelta(hours=hours)
+    url   = "https://financialmodelingprep.com/api/v3/economic_calendar"
+    params = {
+        "from":    now.strftime("%Y-%m-%d"),
+        "to":      end.strftime("%Y-%m-%d"),
+        "apikey":  FMP_API_KEY,
+    }
+    resp = requests.get(url, params=params, timeout=8)
+    resp.raise_for_status()
+    data = resp.json()
+
+    events = []
+    for item in data:
+        if item.get("impact") not in ("High", "Medium"):
             continue
-        delta = (et - now).total_seconds() / 60
-        if 0 < delta <= hours * 60:
-            title = event.get("title","")
-            key   = f"{title[:30]}{et.strftime('%Y-%m-%d%H')}"
-            if key in seen:
+        events.append({
+            "title":      item.get("event", "Unknown"),
+            "country":    item.get("country", ""),
+            "impact":     item.get("impact", ""),
+            "date":       item.get("date", ""),
+            "time_utc":   item.get("date", ""),
+            "source":     "fmp",
+        })
+    return events
+
+
+def _get_hardcoded_events(hours: int) -> list:
+    """Return hardcoded events that fall within the next N hours."""
+    now    = datetime.utcnow()
+    cutoff = now + timedelta(hours=hours)
+    events = []
+
+    for ev in HARDCODED_EVENTS:
+        # Build a datetime for today
+        candidate = now.replace(
+            hour=ev["hour"], minute=ev["minute"], second=0, microsecond=0
+        )
+        # Also check tomorrow
+        for dt in [candidate, candidate + timedelta(days=1)]:
+            if ev["weekday"] is not None and dt.weekday() != ev["weekday"]:
                 continue
-            seen.add(key)
-            result.append({
-                "title":       title,
-                "country":     event.get("country",""),
-                "impact":      "High",
-                "time_utc":    et.strftime("%Y-%m-%d %H:%M UTC"),
-                "minutes":     int(delta),
-                "in_blackout": delta <= BLACKOUT_MINUTES,
-                "source":      event.get("source",""),
-            })
-    result.sort(key=lambda x: x["minutes"])
-    return result#   v 3  
- 
+            if now <= dt <= cutoff:
+                events.append({
+                    "title":      ev["title"],
+                    "country":    ev["country"],
+                    "impact":     ev["impact"],
+                    "date":       dt.strftime("%Y-%m-%d %H:%M UTC"),
+                    "time_utc":   dt.strftime("%Y-%m-%d %H:%M UTC"),
+                    "in_blackout": abs((dt - now).total_seconds()) <= BLACKOUT_MINUTES * 60,
+                    "source":     "hardcoded",
+                })
+
+    return events
