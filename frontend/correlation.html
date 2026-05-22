@@ -3,675 +3,501 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Correlation Map — Oanda Trading Center</title>
+<title>Correlation &mdash; Oanda Trading Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#080b0f;--bg2:#0d1117;--bg3:#131920;--bg4:#1a2230;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --text:#e6edf3;--muted:#7d8590;--muted2:#a0aab4;
+  --green:#3fb950;--gdim:rgba(63,185,80,0.12);
+  --red:#f85149;--rdim:rgba(248,81,73,0.12);
+  --gold:#d29922;--ydim:rgba(210,153,34,0.12);
+  --blue:#388bfd;--bdim:rgba(56,139,253,0.12);
+  --cyan:#39c5cf;--cdim:rgba(57,197,207,0.12);
+  --orange:#e07b39;--odim:rgba(224,123,57,0.12);
+  --purple:#bc8cff;--pdim:rgba(188,140,255,0.12);
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(56,139,253,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(56,139,253,0.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
 
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* NAV - identical to all other pages */
+nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;position:sticky;top:0;z-index:100}
+.nav-logo{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.1em;display:flex;align-items:center;gap:10px;white-space:nowrap}
+.nav-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.nav-links{display:flex;gap:0.25rem}
+.nav-link{font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:6px;transition:all 0.15s;border:1px solid transparent}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,0.04)}
+.nav-link.active{color:var(--text);background:var(--bdim);border-color:rgba(56,139,253,0.2)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-bal{font-family:var(--mono);font-size:12px;color:var(--muted2)}
+.nav-bal span{color:var(--green);font-weight:600}
+.env-badge{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:0.1em;text-transform:uppercase;background:var(--rdim);color:var(--red);border:1px solid rgba(248,81,73,0.2)}
 
-  :root {
-    --bg:       #0a0a0b;
-    --bg1:      #111113;
-    --bg2:      #18181c;
-    --bg3:      #1e1e24;
-    --border:   #2a2a32;
-    --text:     #e2e2e8;
-    --muted:    #6b6b7e;
-    --dim:      #3a3a46;
+/* MAIN */
+.main{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:1.5rem 2rem}
+.page-hdr{margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.page-title{font-size:1.4rem;font-weight:700;letter-spacing:-0.01em;margin-bottom:4px}
+.page-sub{font-size:12px;color:var(--muted);font-family:var(--mono)}
 
-    --red:      #e24b4a;
-    --red-bg:   rgba(226,75,74,0.1);
-    --red-b:    rgba(226,75,74,0.3);
+/* LEGEND */
+.legend{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:1.5rem}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted2);font-family:var(--mono)}
+.legend-dot{width:10px;height:10px;border-radius:50%}
 
-    --amber:    #ef9f27;
-    --amber-bg: rgba(239,159,39,0.1);
-    --amber-b:  rgba(239,159,39,0.3);
+/* INSTRUMENT CHIPS */
+.inst-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.5rem}
+.inst-chip{padding:7px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);cursor:pointer;transition:all 0.15s;font-size:12px;font-weight:600;font-family:var(--mono);color:var(--muted2);position:relative}
+.inst-chip:hover{border-color:var(--border2);background:var(--bg3);color:var(--text)}
+.inst-chip.selected{background:var(--bdim);border-color:rgba(56,139,253,0.3);color:var(--blue)}
+.inst-chip .chip-dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%}
 
-    --blue:     #378add;
-    --blue-bg:  rgba(55,138,221,0.1);
-    --blue-b:   rgba(55,138,221,0.3);
+/* GRID LAYOUT */
+.corr-layout{display:grid;grid-template-columns:1fr 340px;gap:1.5rem;margin-bottom:1.5rem}
 
-    --green:    #3bb06b;
-    --green-bg: rgba(59,176,107,0.1);
-    --green-b:  rgba(59,176,107,0.3);
-  }
+/* MATRIX */
+.matrix-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.matrix-hdr{padding:12px 16px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted)}
+.matrix-wrap{overflow-x:auto;padding:1rem}
+.matrix-table{border-collapse:collapse;font-size:10px;font-family:var(--mono)}
+.matrix-table th{padding:4px 6px;font-size:9px;font-weight:600;color:var(--muted);text-align:center;white-space:nowrap;writing-mode:vertical-rl;height:80px;vertical-align:bottom}
+.matrix-table td.row-label{font-size:10px;font-weight:600;color:var(--muted2);padding:3px 8px 3px 0;white-space:nowrap;text-align:right}
+.matrix-table td.cell{width:28px;height:28px;text-align:center;cursor:pointer;border-radius:4px;font-size:9px;font-weight:800;transition:transform 0.1s;padding:0}
+.matrix-table td.cell:hover{transform:scale(1.15);z-index:10;position:relative}
+.matrix-table td.cell.self{background:rgba(255,255,255,0.06);color:var(--muted)}
 
-  html, body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    min-height: 100vh;
-  }
+/* DETAIL PANEL */
+.detail-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.detail-hdr{padding:12px 16px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted)}
+.detail-body{padding:1.25rem}
+.detail-empty{color:var(--muted);font-size:12px;font-family:var(--mono);text-align:center;padding:2rem}
+.detail-inst{font-size:1.1rem;font-weight:700;font-family:var(--mono);color:var(--gold);margin-bottom:4px}
+.detail-level{font-size:11px;font-weight:700;padding:3px 10px;border-radius:5px;display:inline-flex;margin-bottom:1rem;font-family:var(--mono)}
+.detail-group{margin-bottom:1rem}
+.detail-group-title{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.detail-chips{display:flex;flex-wrap:wrap;gap:5px}
+.detail-chip{font-size:10px;font-weight:700;font-family:var(--mono);padding:3px 10px;border-radius:5px}
+.detail-chip.same{background:var(--rdim);color:var(--red);border:1px solid rgba(248,81,73,0.2)}
+.detail-chip.inverse{background:var(--gdim);color:var(--green);border:1px solid rgba(63,185,80,0.2)}
+.detail-chip.mod{background:var(--ydim);color:var(--gold);border:1px solid rgba(210,153,34,0.2)}
+.detail-warn{background:rgba(248,81,73,0.05);border:1px solid rgba(248,81,73,0.15);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--muted2);line-height:1.6;margin-top:0.75rem}
 
-  /* Nav — matches your existing nav */
-  nav {
-    background: var(--bg1);
-    border-bottom: 1px solid var(--border);
-    padding: 0 20px;
-    display: flex;
-    align-items: center;
-    height: 44px;
-    gap: 0;
-  }
-  nav .brand {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: var(--text);
-    text-decoration: none;
-    margin-right: 24px;
-    text-transform: uppercase;
-  }
-  nav a {
-    font-size: 12px;
-    color: var(--muted);
-    text-decoration: none;
-    padding: 0 12px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    border-bottom: 2px solid transparent;
-    transition: color 0.15s;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  nav a:hover { color: var(--text); }
-  nav a.active { color: var(--text); border-bottom-color: var(--blue); }
+/* LIVE CHECK */
+.check-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.5rem}
+.check-hdr{padding:12px 16px;border-bottom:1px solid var(--border);font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted)}
+.check-body{padding:1.25rem;display:grid;grid-template-columns:1fr 1fr auto;gap:1rem;align-items:end}
+.check-group{display:flex;flex-direction:column;gap:6px}
+.check-label{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.check-select{background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:9px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;transition:border-color 0.15s;cursor:pointer}
+.check-select:focus{border-color:var(--blue)}
+.check-btn{padding:10px 20px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--blue),#1a6fd8);color:#fff;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.check-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(56,139,253,0.3)}
+.check-result{padding:1.25rem;border-top:1px solid var(--border);display:none}
+.check-result.show{display:block}
 
-  .page { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+/* GROUP CARDS */
+.groups-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.group-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1rem;position:relative;overflow:hidden}
+.group-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,transparent)}
+.group-name{font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px}
+.group-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.group-chip{font-size:10px;font-weight:700;font-family:var(--mono);padding:2px 8px;border-radius:4px}
+.group-level{font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;font-family:var(--mono);letter-spacing:0.06em}
+.group-desc{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px}
 
-  .page-header { margin-bottom: 28px; }
-  .page-header h1 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: var(--text);
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-  .page-header p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+/* UTIL */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.sec-title{font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:7px}
+.sec-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--blue);border-radius:2px}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.15);border-top-color:var(--blue);border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:middle;margin-right:4px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;z-index:2000;display:none;align-items:center;gap:8px}
+.toast.show{display:flex}
 
-  /* Legend */
-  .legend {
-    display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
-    margin-bottom: 28px;
-    padding: 14px 16px;
-    background: var(--bg1);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .legend-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  /* Instrument selector */
-  .inst-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 8px;
-    margin-bottom: 28px;
-  }
-  .inst-btn {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    color: var(--muted);
-    cursor: pointer;
-    transition: all 0.15s;
-    text-align: center;
-    text-transform: uppercase;
-  }
-  .inst-btn:hover { border-color: var(--dim); color: var(--text); background: var(--bg3); }
-  .inst-btn.active { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
-  .inst-btn .cat-dot {
-    display: block;
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    margin: 0 auto 4px;
-  }
-
-  /* Main layout */
-  .main-layout {
-    display: grid;
-    grid-template-columns: 1fr 340px;
-    gap: 20px;
-  }
-  @media (max-width: 800px) {
-    .main-layout { grid-template-columns: 1fr; }
-  }
-
-  /* Correlation matrix */
-  .matrix-card {
-    background: var(--bg1);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-  }
-  .card-header {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .card-header h2 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .matrix-wrap { overflow-x: auto; padding: 4px; }
-  table.matrix {
-    border-collapse: collapse;
-    width: 100%;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-  }
-  table.matrix th {
-    padding: 8px 6px;
-    text-align: center;
-    color: var(--muted);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    font-size: 9px;
-    white-space: nowrap;
-  }
-  table.matrix th:first-child { text-align: left; padding-left: 14px; min-width: 90px; }
-  table.matrix td {
-    padding: 5px 3px;
-    text-align: center;
-    font-size: 9px;
-    font-weight: 600;
-    transition: filter 0.1s;
-  }
-  table.matrix td:first-child {
-    text-align: left;
-    padding-left: 14px;
-    color: var(--text);
-    font-size: 10px;
-    white-space: nowrap;
-  }
-  .cell { 
-    width: 32px; height: 22px;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition: transform 0.1s;
-  }
-  .cell:hover { transform: scale(1.15); z-index: 10; position: relative; }
-  .cell.c-vs  { background: rgba(226,75,74,0.85);  color: #fff; }
-  .cell.c-s   { background: rgba(239,159,39,0.75); color: #fff; }
-  .cell.c-m   { background: rgba(55,138,221,0.6);  color: #fff; }
-  .cell.c-n   { background: var(--bg3); color: var(--dim); }
-  .cell.c-inv { background: rgba(59,176,107,0.6);  color: #fff; }
-  .cell.c-self{ background: var(--bg3); color: var(--muted); }
-
-  /* Detail panel */
-  .detail-card {
-    background: var(--bg1);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    height: fit-content;
-    position: sticky;
-    top: 20px;
-  }
-  .detail-placeholder {
-    padding: 32px 18px;
-    text-align: center;
-    color: var(--muted);
-    font-size: 12px;
-    line-height: 1.7;
-  }
-  .detail-content { display: none; }
-  .detail-content.visible { display: block; }
-  .detail-inst {
-    padding: 16px 18px 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    color: var(--text);
-  }
-  .detail-group {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-  }
-  .detail-group:last-child { border-bottom: none; }
-  .detail-group-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
-  .detail-group-label.danger  { color: var(--red); }
-  .detail-group-label.warning { color: var(--amber); }
-  .detail-group-label.info    { color: var(--blue); }
-  .detail-peers {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-bottom: 8px;
-  }
-  .detail-peer {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    padding: 3px 9px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: 0.04em;
-  }
-  .detail-reason { font-size: 11px; color: var(--muted); line-height: 1.6; }
-
-  /* Live check widget */
-  .check-card {
-    background: var(--bg1);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 18px;
-    margin-top: 20px;
-  }
-  .check-card h2 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 14px;
-  }
-  .check-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 10px;
-    align-items: end;
-  }
-  .check-field label {
-    display: block;
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 5px;
-  }
-  .check-field select, .check-field button {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 9px 12px;
-    cursor: pointer;
-    outline: none;
-    transition: border-color 0.15s;
-    appearance: none;
-  }
-  .check-field select:focus, .check-field button:hover { border-color: var(--blue); }
-  .check-field button { background: var(--blue-bg); color: var(--blue); border-color: var(--blue-b); }
-  .check-result { margin-top: 14px; }
-  .check-result .warn-block {
-    border-radius: 8px;
-    padding: 11px 13px;
-    margin-bottom: 8px;
-    font-size: 12px;
-    line-height: 1.6;
-  }
-  .check-result .warn-block.danger  { background: var(--red-bg);   border: 1px solid var(--red-b);   color: var(--red); }
-  .check-result .warn-block.warning { background: var(--amber-bg); border: 1px solid var(--amber-b); color: var(--amber); }
-  .check-result .warn-block.info    { background: var(--blue-bg);  border: 1px solid var(--blue-b);  color: var(--blue); }
-  .check-result .warn-block.safe    { background: var(--green-bg); border: 1px solid var(--green-b); color: var(--green); }
-  .warn-block strong { display: block; margin-bottom: 3px; font-size: 12px; }
-  .warn-detail { font-size: 11px; opacity: 0.85; }
+@media(max-width:1000px){.corr-layout{grid-template-columns:1fr}.groups-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.groups-grid{grid-template-columns:1fr}.check-body{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-
 <nav>
-  <a href="index.html" class="brand">⬡ OANDA TRADING CENTER</a>
-  <a href="index.html">Dashboard</a>
-  <a href="calculator.html">Calculator</a>
-  <a href="positions.html">Positions</a>
-  <a href="journal.html">Journal</a>
-  <a href="risk.html">Risk</a>
-  <a href="correlation.html" class="active">Correlation</a>
+  <div class="nav-logo"><div class="nav-dot"></div>OANDA TRADING CENTER</div>
+  <div class="nav-links">
+    <a href="index.html"       class="nav-link">Dashboard</a>
+    <a href="calculator.html"  class="nav-link">Calculator</a>
+    <a href="positions.html"   class="nav-link">Positions</a>
+    <a href="journal.html"     class="nav-link">Journal</a>
+    <a href="risk.html"        class="nav-link">Risk</a>
+    <a href="correlation.html" class="nav-link active">Correlation</a>
+  </div>
+  <div class="nav-right">
+    <div class="nav-bal">Balance: <span id="nav-bal">&mdash;</span></div>
+    <div class="env-badge">LIVE</div>
+  </div>
 </nav>
 
-<div class="page">
-
-  <div class="page-header">
-    <h1>🔗 Correlation Map</h1>
-    <p>Instruments in the same group move together on macro events. Taking the same direction on correlated instruments multiplies your actual risk beyond what the calculator shows.</p>
+<div class="main">
+  <div class="page-hdr">
+    <div class="page-title">Correlation Map</div>
+    <div class="page-sub">Instruments in the same group move together on macro events. Taking the same direction on correlated instruments multiplies your actual risk beyond what the calculator shows.</div>
   </div>
 
+  <!-- LEGEND -->
   <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Very strong (0.90+)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> Strong (0.70–0.90)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Moderate (0.50–0.70)</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Inverse correlation</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--dim)"></div> No tracked correlation</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f85149"></div>Very strong (0.90+)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e07b39"></div>Strong (0.70&ndash;0.90)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#388bfd"></div>Moderate (0.50&ndash;0.70)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3fb950"></div>Inverse correlation</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7d8590"></div>No tracked correlation</div>
   </div>
 
-  <!-- Instrument picker -->
-  <div id="inst-grid" class="inst-grid"></div>
+  <!-- INSTRUMENT SELECTOR -->
+  <div class="inst-grid" id="inst-grid"></div>
 
-  <div class="main-layout">
-
-    <!-- Matrix -->
+  <!-- MATRIX + DETAIL -->
+  <div class="corr-layout">
     <div class="matrix-card">
-      <div class="card-header">
-        <h2>Correlation matrix — click any cell for details</h2>
-      </div>
+      <div class="matrix-hdr">Correlation Matrix &mdash; Click any cell for details</div>
       <div class="matrix-wrap">
-        <table class="matrix" id="matrix-table">
-          <thead id="matrix-head"></thead>
+        <table class="matrix-table" id="matrix-table">
           <tbody id="matrix-body"></tbody>
         </table>
       </div>
     </div>
-
-    <!-- Detail panel -->
     <div class="detail-card">
-      <div class="card-header">
-        <h2>Instrument detail</h2>
+      <div class="detail-hdr">Instrument Detail</div>
+      <div class="detail-body" id="detail-body">
+        <div class="detail-empty">Click any instrument or matrix cell to see its correlation groups</div>
       </div>
-      <div class="detail-placeholder" id="detail-placeholder">
-        Click any instrument or matrix cell to see its correlation groups
-      </div>
-      <div class="detail-content" id="detail-content"></div>
     </div>
-
   </div>
 
-  <!-- Live check widget -->
+  <!-- LIVE CHECK -->
   <div class="check-card">
-    <h2>🛡 Live correlation check — simulate a new trade</h2>
-    <div class="check-row">
-      <div class="check-field">
-        <label>Instrument</label>
-        <select id="check-inst"></select>
-      </div>
-      <div class="check-field">
-        <label>Direction</label>
-        <select id="check-dir">
-          <option value="BUY">▲ BUY / LONG</option>
-          <option value="SELL">▼ SELL / SHORT</option>
+    <div class="check-hdr">Live Correlation Check &mdash; Simulate a New Trade</div>
+    <div class="check-body">
+      <div class="check-group">
+        <div class="check-label">Instrument</div>
+        <select class="check-select" id="check-inst">
+          <option value="EUR_USD">EUR/USD</option>
+          <option value="GBP_JPY">GBP/JPY</option>
+          <option value="XAU_USD">XAU/USD</option>
+          <option value="XAG_USD">XAG/USD</option>
+          <option value="XPD_USD">XPD/USD</option>
+          <option value="NATGAS_USD">NATGAS</option>
+          <option value="WTICO_USD">WTI OIL</option>
+          <option value="CORN_USD">CORN</option>
+          <option value="SUGAR_USD">SUGAR</option>
+          <option value="WHEAT_USD">WHEAT</option>
+          <option value="SOYBN_USD">SOYBN</option>
+          <option value="SPX500_USD">SPX500</option>
+          <option value="NAS100_USD">NAS100</option>
+          <option value="UK100_GBP">UK100</option>
+          <option value="DE30_EUR">DE30</option>
         </select>
       </div>
-      <div class="check-field">
-        <label>&nbsp;</label>
-        <button onclick="runLiveCheck()">Check →</button>
+      <div class="check-group">
+        <div class="check-label">Direction</div>
+        <select class="check-select" id="check-dir">
+          <option value="BUY">BUY / LONG</option>
+          <option value="SELL">SELL / SHORT</option>
+        </select>
       </div>
+      <button class="check-btn" onclick="runCheck()">Check &rarr;</button>
     </div>
     <div class="check-result" id="check-result"></div>
   </div>
 
+  <!-- CORRELATION GROUPS -->
+  <div class="sec-hdr"><div class="sec-title">Instrument Groups &mdash; Known Correlations</div></div>
+  <div class="groups-grid" id="groups-grid"></div>
 </div>
 
+<div class="toast" id="toast"><span id="toast-msg"></span></div>
+
 <script>
-// ── Data (mirrors correlation.py) ──────────────────────────────────────────
+const API = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
+  ? 'http://localhost:8000'
+  : 'https://oanda-trading-center.onrender.com';
+
 const INSTRUMENTS = [
-  { id:'EUR_USD',    label:'EUR/USD',   cat:'FX' },
-  { id:'GBP_USD',    label:'GBP/USD',   cat:'FX' },
-  { id:'GBP_JPY',    label:'GBP/JPY',   cat:'FX' },
-  { id:'WTICO_USD',  label:'WTI OIL',   cat:'ENERGY' },
-  { id:'BCO_USD',    label:'BRENT',     cat:'ENERGY' },
-  { id:'NATGAS_USD', label:'NATGAS',    cat:'ENERGY' },
-  { id:'XAU_USD',    label:'XAU/USD',   cat:'METAL' },
-  { id:'XAG_USD',    label:'XAG/USD',   cat:'METAL' },
-  { id:'XPD_USD',    label:'XPD/USD',   cat:'METAL' },
-  { id:'CORN_USD',   label:'CORN',      cat:'AGRI' },
-  { id:'WHEAT_USD',  label:'WHEAT',     cat:'AGRI' },
-  { id:'SOYBN_USD',  label:'SOYBN',     cat:'AGRI' },
-  { id:'SUGAR_USD',  label:'SUGAR',     cat:'AGRI' },
-  { id:'SPX500_USD', label:'SPX500',    cat:'INDEX' },
-  { id:'NAS100_USD', label:'NAS100',    cat:'INDEX' },
-  { id:'UK100_GBP',  label:'UK100',     cat:'INDEX' },
-  { id:'DE30_EUR',   label:'DE30',      cat:'INDEX' },
+  {id:'EUR_USD',name:'EUR/USD',cat:'FX'},
+  {id:'GBP_JPY',name:'GBP/JPY',cat:'FX'},
+  {id:'XAU_USD',name:'XAU/USD',cat:'Metal'},
+  {id:'XAG_USD',name:'XAG/USD',cat:'Metal'},
+  {id:'XPD_USD',name:'XPD/USD',cat:'Metal'},
+  {id:'NATGAS_USD',name:'NATGAS',cat:'Energy'},
+  {id:'WTICO_USD',name:'WTI OIL',cat:'Energy'},
+  {id:'CORN_USD',name:'CORN',cat:'Agri'},
+  {id:'SUGAR_USD',name:'SUGAR',cat:'Agri'},
+  {id:'WHEAT_USD',name:'WHEAT',cat:'Agri'},
+  {id:'SOYBN_USD',name:'SOYBN',cat:'Agri'},
+  {id:'SPX500_USD',name:'SPX500',cat:'Index'},
+  {id:'NAS100_USD',name:'NAS100',cat:'Index'},
+  {id:'UK100_GBP',name:'UK100',cat:'Index'},
+  {id:'DE30_EUR',name:'DE30',cat:'Index'},
 ];
 
-const GROUPS = {
-  AGRI_GRAINS:    { instruments:['CORN_USD','WHEAT_USD','SOYBN_USD'],       strength:'STRONG',      reason:'All move on USDA reports, weather events, and USD strength.' },
-  AGRI_SOFT:      { instruments:['SUGAR_USD','CORN_USD','WHEAT_USD','SOYBN_USD'], strength:'MODERATE', reason:'Broad commodity risk-on/off, USD index, energy input costs.' },
-  ENERGY:         { instruments:['WTICO_USD','BCO_USD','NATGAS_USD'],        strength:'MODERATE',    reason:'OPEC decisions, US inventory data, and geopolitical risk.' },
-  METALS_PRECIOUS:{ instruments:['XAU_USD','XAG_USD','XPD_USD'],            strength:'STRONG',      reason:'Real yields, USD, and safe-haven flows drive all precious metals.' },
-  FX_USD_MAJORS:  { instruments:['EUR_USD','GBP_USD'],                      strength:'STRONG',      reason:'Both inversely correlated to DXY. Fed decisions move all USD majors.' },
-  INDICES_US:     { instruments:['SPX500_USD','NAS100_USD'],                 strength:'VERY_STRONG', reason:'Risk sentiment, Fed policy, and earnings season drive all US indices.' },
-  INDICES_EU:     { instruments:['UK100_GBP','DE30_EUR'],                    strength:'STRONG',      reason:'ECB policy and European risk sentiment.' },
+// Correlation data: [level, type] where type: S=same, I=inverse, M=moderate
+// VS=very strong, S=strong, M=moderate, I=inverse, N=none
+const CORR = {
+  'EUR_USD':   {'GBP_JPY':'M-S','XAU_USD':'M-S'},
+  'GBP_JPY':   {'EUR_USD':'M-S'},
+  'XAU_USD':   {'XAG_USD':'S-S','XPD_USD':'S-S','EUR_USD':'M-S'},
+  'XAG_USD':   {'XAU_USD':'S-S','XPD_USD':'S-S'},
+  'XPD_USD':   {'XAU_USD':'S-S','XAG_USD':'S-S'},
+  'NATGAS_USD':{'WTICO_USD':'M-S'},
+  'WTICO_USD': {'NATGAS_USD':'M-S','BRENT':'VS-S'},
+  'CORN_USD':  {'WHEAT_USD':'S-S','SOYBN_USD':'S-S','SUGAR_USD':'M-S'},
+  'WHEAT_USD': {'CORN_USD':'S-S','SOYBN_USD':'S-S','SUGAR_USD':'M-S'},
+  'SOYBN_USD': {'CORN_USD':'S-S','WHEAT_USD':'S-S','SUGAR_USD':'M-S'},
+  'SUGAR_USD': {'CORN_USD':'M-S','WHEAT_USD':'M-S','SOYBN_USD':'M-S'},
+  'SPX500_USD':{'NAS100_USD':'VS-S'},
+  'NAS100_USD':{'SPX500_USD':'VS-S'},
+  'UK100_GBP': {'DE30_EUR':'M-S'},
+  'DE30_EUR':  {'UK100_GBP':'M-S'},
 };
 
-const INVERSE = [
-  { a:'XAU_USD', b:'USD_JPY',  reason:'Gold and USDJPY are both safe-haven proxies but move in opposite directions.' },
-  { a:'WTICO_USD', b:'USD_CAD', reason:'CAD is a petrocurrency — oil up means USDJPY falls.' },
+const GROUPS = [
+  {name:'US Indices',color:'var(--purple)',ac:'#bc8cff',instruments:['SPX500_USD','NAS100_USD'],level:'VERY STRONG',desc:'SPX500 and NAS100 are almost perfectly correlated. Never hold both in the same direction — it is one effective position with double margin.'},
+  {name:'Precious Metals',color:'var(--cyan)',ac:'#39c5cf',instruments:['XAU_USD','XAG_USD','XPD_USD'],level:'STRONG',desc:'Gold, Silver and Palladium react strongly to the same macro drivers: USD strength, inflation, and risk-off flows.'},
+  {name:'Grains',color:'var(--gold)',ac:'#d29922',instruments:['CORN_USD','WHEAT_USD','SOYBN_USD'],level:'STRONG',desc:'Corn, Wheat and Soybean are driven by weather, supply chain, and USD. High overlap — avoid holding all three.'},
+  {name:'Energy',color:'var(--orange)',ac:'#e07b39',instruments:['NATGAS_USD','WTICO_USD'],level:'MODERATE',desc:'WTI Oil and Natural Gas share energy sector sentiment but can diverge on supply-specific news.'},
+  {name:'Soft Commodities',color:'var(--green)',ac:'#3fb950',instruments:['SUGAR_USD'],level:'LOW',desc:'Sugar has moderate correlation with grains on broad USD moves but is largely independent.'},
+  {name:'EU/UK Indices',color:'var(--blue)',ac:'#388bfd',instruments:['UK100_GBP','DE30_EUR'],level:'MODERATE',desc:'UK100 and DE30 share European risk sentiment but are exposed to different currencies (GBP vs EUR).'},
 ];
 
-const STRENGTH_ORDER = { VERY_STRONG:4, STRONG:3, MODERATE:2, INFO:1 };
-const CAT_COLOUR = { FX:'#378add', ENERGY:'#ef9f27', METAL:'#9b6dff', AGRI:'#3bb06b', INDEX:'#e24b4a' };
+const LEVEL_STYLE = {
+  'VS': {bg:'rgba(248,81,73,0.25)',color:'#f85149',label:'VS'},
+  'S':  {bg:'rgba(224,123,57,0.25)',color:'#e07b39',label:'S'},
+  'M':  {bg:'rgba(56,139,253,0.25)',color:'#388bfd',label:'M'},
+  'I':  {bg:'rgba(63,185,80,0.25)',color:'#3fb950',label:'I'},
+};
 
-// ── Build correlation lookup ───────────────────────────────────────────────
-function getRelation(a, b) {
-  // Check inverse
-  for (const inv of INVERSE) {
-    if ((inv.a===a&&inv.b===b)||(inv.a===b&&inv.b===a)) return { type:'inv', strength:'INVERSE' };
-  }
-  let best = null;
-  for (const [key, group] of Object.entries(GROUPS)) {
-    if (group.instruments.includes(a) && group.instruments.includes(b)) {
-      const s = STRENGTH_ORDER[group.strength]||0;
-      if (!best || s > STRENGTH_ORDER[best.strength]||0) {
-        best = { type:'pos', strength:group.strength, reason:group.reason };
-      }
-    }
-  }
-  return best || { type:'none', strength:'NONE' };
-}
+let openPositions = [];
+let selectedInst = null;
 
-function cellClass(rel) {
-  if (!rel || rel.type==='none') return 'c-n';
-  if (rel.type==='inv')         return 'c-inv';
-  if (rel.strength==='VERY_STRONG') return 'c-vs';
-  if (rel.strength==='STRONG')      return 'c-s';
-  if (rel.strength==='MODERATE')    return 'c-m';
-  return 'c-n';
-}
-
-function cellLabel(rel) {
-  if (!rel || rel.type==='none') return '—';
-  if (rel.type==='inv') return 'INV';
-  if (rel.strength==='VERY_STRONG') return 'VS';
-  if (rel.strength==='STRONG')      return 'S';
-  if (rel.strength==='MODERATE')    return 'M';
-  return '—';
-}
-
-// ── Build UI ───────────────────────────────────────────────────────────────
-function buildInstrumentGrid() {
+// ── BUILD INSTRUMENT CHIPS ────────────────────────────────────────────────────
+function buildInstGrid(){
   const grid = document.getElementById('inst-grid');
-  const select = document.getElementById('check-inst');
-  INSTRUMENTS.forEach(inst => {
-    const btn = document.createElement('button');
-    btn.className = 'inst-btn';
-    btn.dataset.id = inst.id;
-    btn.innerHTML = `<span class="cat-dot" style="background:${CAT_COLOUR[inst.cat]||'#888'}"></span>${inst.label}`;
-    btn.onclick = () => selectInstrument(inst.id);
-    grid.appendChild(btn);
-
-    const opt = document.createElement('option');
-    opt.value = inst.id;
-    opt.textContent = inst.label;
-    select.appendChild(opt);
-  });
+  grid.innerHTML = INSTRUMENTS.map(inst => {
+    const isOpen = openPositions.some(p => p.instrument === inst.id);
+    return `<div class="inst-chip ${isOpen?'selected':''}" id="chip-${inst.id}" onclick="selectInst('${inst.id}')">
+      ${inst.name}
+      ${isOpen ? '<div class="chip-dot" style="background:var(--green)"></div>' : ''}
+    </div>`;
+  }).join('');
 }
 
-function buildMatrix() {
-  const head = document.getElementById('matrix-head');
-  const body = document.getElementById('matrix-body');
+// ── BUILD MATRIX ──────────────────────────────────────────────────────────────
+function buildMatrix(){
+  const tbody = document.getElementById('matrix-body');
+  const names = INSTRUMENTS.map(i => i.name);
 
   // Header row
-  let headHtml = '<tr><th></th>';
-  INSTRUMENTS.forEach(inst => {
-    headHtml += `<th style="writing-mode:vertical-rl;transform:rotate(180deg);height:72px;padding:4px 4px 8px;">${inst.label}</th>`;
-  });
-  headHtml += '</tr>';
-  head.innerHTML = headHtml;
+  let headerRow = '<tr><th></th>';
+  INSTRUMENTS.forEach(i => { headerRow += `<th title="${i.name}">${i.name.replace('/','<br>')}</th>`; });
+  headerRow += '</tr>';
 
-  // Body rows
-  let bodyHtml = '';
-  INSTRUMENTS.forEach(rowInst => {
-    bodyHtml += `<tr>`;
-    bodyHtml += `<td style="color:${CAT_COLOUR[rowInst.cat]||'#888'}">${rowInst.label}</td>`;
+  // Data rows
+  const rows = INSTRUMENTS.map(rowInst => {
+    let row = `<tr><td class="row-label">${rowInst.name}</td>`;
     INSTRUMENTS.forEach(colInst => {
-      if (rowInst.id === colInst.id) {
-        bodyHtml += `<td><span class="cell c-self">●</span></td>`;
+      if(rowInst.id === colInst.id){
+        row += `<td class="cell self" title="${rowInst.name}">&#8226;</td>`;
         return;
       }
-      const rel = getRelation(rowInst.id, colInst.id);
-      const cls = cellClass(rel);
-      const lbl = cellLabel(rel);
-      const title = rel.type !== 'none' ? `${rowInst.label} × ${colInst.label}: ${rel.strength}` : '';
-      bodyHtml += `<td><span class="cell ${cls}" onclick="showCellDetail('${rowInst.id}','${colInst.id}')" title="${title}">${lbl}</span></td>`;
+      const corr = CORR[rowInst.id]?.[colInst.id];
+      if(!corr){
+        row += `<td class="cell" style="background:rgba(255,255,255,0.03);color:var(--bg4)" title="No correlation tracked" onclick="selectCell('${rowInst.id}','${colInst.id}')">&#8211;</td>`;
+        return;
+      }
+      const [lvl] = corr.split('-');
+      const style = LEVEL_STYLE[lvl] || LEVEL_STYLE['M'];
+      row += `<td class="cell" style="background:${style.bg};color:${style.color}" title="${rowInst.name} vs ${colInst.name}: ${lvl}" onclick="selectCell('${rowInst.id}','${colInst.id}')">${style.label}</td>`;
     });
-    bodyHtml += `</tr>`;
+    row += '</tr>';
+    return row;
+  }).join('');
+
+  tbody.innerHTML = headerRow + rows;
+}
+
+// ── SELECT INSTRUMENT ─────────────────────────────────────────────────────────
+function selectInst(id){
+  selectedInst = id;
+  document.querySelectorAll('.inst-chip').forEach(c => {
+    const isOpen = openPositions.some(p => p.instrument === c.id.replace('chip-',''));
+    c.classList.remove('selected');
+    if(c.id === `chip-${id}`) c.classList.add('selected');
   });
-  body.innerHTML = bodyHtml;
+  renderDetail(id);
 }
 
-function selectInstrument(id) {
-  document.querySelectorAll('.inst-btn').forEach(b => b.classList.toggle('active', b.dataset.id === id));
-  showInstrumentDetail(id);
+function selectCell(rowId, colId){
+  selectInst(rowId);
 }
 
-function showInstrumentDetail(id) {
+function renderDetail(id){
   const inst = INSTRUMENTS.find(i => i.id === id);
-  if (!inst) return;
+  const corrs = CORR[id] || {};
+  const isOpen = openPositions.some(p => p.instrument === id);
+  const el = document.getElementById('detail-body');
 
-  const placeholder = document.getElementById('detail-placeholder');
-  const content     = document.getElementById('detail-content');
-  placeholder.style.display = 'none';
-  content.classList.add('visible');
+  const sameDir = Object.entries(corrs).filter(([,v]) => v.endsWith('-S')).map(([k]) => k);
+  const invDir  = Object.entries(corrs).filter(([,v]) => v.endsWith('-I')).map(([k]) => k);
 
-  const groups = [];
-  for (const [key, group] of Object.entries(GROUPS)) {
-    if (group.instruments.includes(id)) {
-      const peers = group.instruments.filter(i => i !== id);
-      groups.push({ ...group, peers });
+  const openConflicts = sameDir.filter(k => openPositions.some(p => p.instrument === k));
+
+  el.innerHTML = `
+    <div class="detail-inst">${inst.name}</div>
+    <div class="detail-level" style="background:${isOpen?'var(--gdim)':'var(--bg3)'};color:${isOpen?'var(--green)':'var(--muted)'}">
+      ${isOpen ? 'POSITION OPEN' : 'NOT IN PORTFOLIO'}
+    </div>
+    ${sameDir.length ? `
+    <div class="detail-group">
+      <div class="detail-group-title">Positive Correlations (move together)</div>
+      <div class="detail-chips">
+        ${sameDir.map(k => {
+          const [lvl] = (CORR[id][k]||'M-S').split('-');
+          const s = LEVEL_STYLE[lvl]||LEVEL_STYLE['M'];
+          const name = INSTRUMENTS.find(i=>i.id===k)?.name||k;
+          const conflict = openPositions.some(p=>p.instrument===k);
+          return `<span class="detail-chip same" style="background:${s.bg};color:${s.color};border-color:${s.color}40;${conflict?'outline:1px solid var(--red)':''}">${name}${conflict?' [OPEN]':''}</span>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+    ${invDir.length ? `
+    <div class="detail-group">
+      <div class="detail-group-title">Inverse Correlations (move opposite)</div>
+      <div class="detail-chips">
+        ${invDir.map(k => {
+          const name = INSTRUMENTS.find(i=>i.id===k)?.name||k;
+          return `<span class="detail-chip inverse">${name}</span>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+    ${!sameDir.length && !invDir.length ? '<div style="color:var(--muted);font-size:12px;font-family:var(--mono)">No significant correlations tracked for this instrument.</div>' : ''}
+    ${openConflicts.length ? `
+    <div class="detail-warn">
+      [!] You have open positions in correlated instruments: ${openConflicts.map(k=>INSTRUMENTS.find(i=>i.id===k)?.name||k).join(', ')}.
+      Your actual risk exposure is multiplied. Consider whether this is intentional.
+    </div>` : ''}
+  `;
+}
+
+// ── LIVE CHECK ────────────────────────────────────────────────────────────────
+async function runCheck(){
+  const inst = document.getElementById('check-inst').value;
+  const dir  = document.getElementById('check-dir').value;
+  const result = document.getElementById('check-result');
+  result.classList.add('show');
+  result.innerHTML = '<span class="spin"></span>Checking correlations...';
+
+  try{
+    const r = await fetch(`${API}/api/check-correlation`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        new_instrument: inst,
+        new_direction: dir,
+        open_positions: openPositions.map(p => ({instrument:p.instrument, direction:p.direction}))
+      })
+    });
+    const d = await r.json();
+    const instName = INSTRUMENTS.find(i=>i.id===inst)?.name||inst;
+
+    if(d.block_trade){
+      result.innerHTML = `
+        <div style="background:var(--rdim);border:1px solid rgba(248,81,73,0.3);border-radius:8px;padding:1rem">
+          <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:6px">[BLOCKED] ${dir} ${instName}</div>
+          <div style="font-size:12px;color:var(--muted2)">${d.summary||'High correlation conflict with existing positions.'}</div>
+          ${(d.warnings||[]).map(w=>`<div style="font-size:11px;color:var(--red);margin-top:4px">- ${w}</div>`).join('')}
+        </div>`;
+    } else if(d.warnings && d.warnings.length){
+      result.innerHTML = `
+        <div style="background:var(--ydim);border:1px solid rgba(210,153,34,0.2);border-radius:8px;padding:1rem">
+          <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">[WARNING] ${dir} ${instName} &mdash; Proceed with caution</div>
+          <div style="font-size:12px;color:var(--muted2)">${d.summary||''}</div>
+          ${(d.warnings||[]).map(w=>`<div style="font-size:11px;color:var(--gold);margin-top:4px">- ${w}</div>`).join('')}
+        </div>`;
+    } else {
+      result.innerHTML = `
+        <div style="background:var(--gdim);border:1px solid rgba(63,185,80,0.2);border-radius:8px;padding:1rem">
+          <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:6px">[CLEAR] ${dir} ${instName} &mdash; No correlation conflicts</div>
+          <div style="font-size:12px;color:var(--muted2)">No significant correlation conflicts with your current open positions.</div>
+        </div>`;
+    }
+  } catch(e){
+    // Fallback local check
+    const corrs = CORR[inst]||{};
+    const conflicts = openPositions.filter(p => corrs[p.instrument]?.endsWith('-S'));
+    const instName = INSTRUMENTS.find(i=>i.id===inst)?.name||inst;
+    if(conflicts.length){
+      result.innerHTML = `
+        <div style="background:var(--ydim);border:1px solid rgba(210,153,34,0.2);border-radius:8px;padding:1rem">
+          <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px">[WARNING] Correlation conflict detected</div>
+          <div style="font-size:12px;color:var(--muted2)">
+            ${instName} correlates with: ${conflicts.map(p=>INSTRUMENTS.find(i=>i.id===p.instrument)?.name||p.instrument).join(', ')}
+          </div>
+        </div>`;
+    } else {
+      result.innerHTML = `
+        <div style="background:var(--gdim);border:1px solid rgba(63,185,80,0.2);border-radius:8px;padding:1rem">
+          <div style="font-size:13px;font-weight:700;color:var(--green);">[CLEAR] No conflicts for ${dir} ${instName}</div>
+        </div>`;
     }
   }
-
-  const strengthColour = { VERY_STRONG:'danger', STRONG:'danger', MODERATE:'warning' };
-
-  let html = `<div class="detail-inst">${inst.label}</div>`;
-
-  if (groups.length === 0) {
-    html += `<div class="detail-group"><p class="detail-reason">No correlations tracked for this instrument.</p></div>`;
-  } else {
-    groups.forEach(group => {
-      const cls = strengthColour[group.strength] || 'info';
-      html += `
-        <div class="detail-group">
-          <div class="detail-group-label ${cls}">${group.strength.replace('_',' ')} CORRELATION</div>
-          <div class="detail-peers">
-            ${group.peers.map(p => {
-              const pi = INSTRUMENTS.find(i => i.id === p);
-              return `<span class="detail-peer">${pi ? pi.label : p}</span>`;
-            }).join('')}
-          </div>
-          <div class="detail-reason">${group.reason}</div>
-        </div>`;
-    });
-  }
-
-  const invs = INVERSE.filter(inv => inv.a === id || inv.b === id);
-  if (invs.length) {
-    invs.forEach(inv => {
-      const otherId = inv.a === id ? inv.b : inv.a;
-      const other   = INSTRUMENTS.find(i => i.id === otherId);
-      html += `
-        <div class="detail-group">
-          <div class="detail-group-label" style="color:var(--green)">INVERSE CORRELATION</div>
-          <div class="detail-peers"><span class="detail-peer">${other ? other.label : otherId}</span></div>
-          <div class="detail-reason">${inv.reason}</div>
-        </div>`;
-    });
-  }
-
-  content.innerHTML = html;
 }
 
-function showCellDetail(aId, bId) {
-  showInstrumentDetail(aId);
-  selectInstrument(aId);
-}
-
-// ── Live check (uses local data — no API call needed for this page) ────────
-function runLiveCheck() {
-  const instId = document.getElementById('check-inst').value;
-  const dir    = document.getElementById('check-dir').value;
-  const result = document.getElementById('check-result');
-
-  // Simulate "what if I had one of each correlated instrument open"
-  const relatedInsts = INSTRUMENTS.filter(i => {
-    if (i.id === instId) return false;
-    const rel = getRelation(instId, i.id);
-    return rel.type !== 'none';
-  });
-
-  if (relatedInsts.length === 0) {
-    result.innerHTML = `<div class="warn-block safe"><strong>✓ No correlated instruments tracked</strong><span class="warn-detail">This instrument has no tracked correlations in your 16-instrument universe.</span></div>`;
-    return;
-  }
-
-  let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-family:'JetBrains Mono',monospace;letter-spacing:0.04em;">IF YOU HAD THESE OPEN WHEN TAKING ${instId.replace('_USD','').replace('_GBP','').replace('_EUR','')} ${dir}:</div>`;
-
-  relatedInsts.forEach(other => {
-    const rel = getRelation(instId, other.id);
-    const colMap = { VERY_STRONG:'danger', STRONG:'danger', MODERATE:'warning', INVERSE:'info' };
-    const cls = rel.type === 'inv' ? 'info' : colMap[rel.strength] || 'info';
-    const label = rel.type === 'inv' ? '↔ INVERSE' : `${rel.strength.replace('_',' ')} CORR`;
-    html += `<div class="warn-block ${cls}">
-      <strong>${label} — ${other.label}</strong>
-      <span class="warn-detail">${rel.reason||'Correlated instruments — macro events affect both simultaneously.'}</span>
+// ── BUILD GROUPS ──────────────────────────────────────────────────────────────
+function buildGroups(){
+  const grid = document.getElementById('groups-grid');
+  grid.innerHTML = GROUPS.map(g => {
+    const openInGroup = g.instruments.filter(id => openPositions.some(p=>p.instrument===id));
+    const conflict = openInGroup.length >= 2;
+    return `<div class="group-card ${conflict?'danger':''}" style="--ac:${g.ac}">
+      <div class="group-name" style="color:${g.color}">${g.name}</div>
+      <div class="group-chips">
+        ${g.instruments.map(id => {
+          const name = INSTRUMENTS.find(i=>i.id===id)?.name||id;
+          const isOpen = openPositions.some(p=>p.instrument===id);
+          return `<span class="group-chip" style="background:${isOpen?'rgba(63,185,80,0.15)':'var(--bg4)'};color:${isOpen?'var(--green)':'var(--muted)'};border:1px solid ${isOpen?'rgba(63,185,80,0.25)':'var(--border)'}">${name}${isOpen?' [OPEN]':''}</span>`;
+        }).join('')}
+      </div>
+      <span class="group-level" style="background:${g.color}22;color:${g.color};border:1px solid ${g.color}44">${g.level}</span>
+      <div class="group-desc">${g.desc}</div>
+      ${conflict ? `<div style="margin-top:8px;font-size:11px;color:var(--red);font-weight:600">[!] ${openInGroup.length} correlated positions open &mdash; risk is multiplied</div>` : ''}
     </div>`;
-  });
-
-  result.innerHTML = html;
+  }).join('');
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────
-buildInstrumentGrid();
-buildMatrix();
+// ── LOAD DATA ─────────────────────────────────────────────────────────────────
+async function loadData(){
+  try{
+    const [accR, trR] = await Promise.all([
+      fetch(`${API}/api/account`, {signal:AbortSignal.timeout(8000)}),
+      fetch(`${API}/api/trades`,  {signal:AbortSignal.timeout(8000)})
+    ]);
+    const accD = await accR.json();
+    const trD  = await trR.json();
+    if(accD.ok) document.getElementById('nav-bal').textContent = '$'+Number(accD.account.balance||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    if(trD.ok){
+      openPositions = trD.trades.map(t=>({
+        instrument: t.instrument,
+        direction: parseFloat(t.currentUnits||0)>0?'BUY':'SELL'
+      }));
+    }
+  }catch(e){}
+  buildInstGrid();
+  buildMatrix();
+  buildGroups();
+}
+
+loadData();
 </script>
 </body>
 </html>

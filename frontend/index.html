@@ -348,7 +348,7 @@ function renderSignals(signals, account){
 
   const buys=active.filter(i=>signals[i.id]?.signal==='BUY').length;
   const sells=active.filter(i=>signals[i.id]?.signal==='SELL').length;
-  document.getElementById('sig-summary').textContent=`${buys} BUY &middot; ${sells} SELL &middot; ${waiting.length} WAIT`;
+  document.getElementById('sig-summary').textContent=`${buys} BUY · ${sells} SELL · ${waiting.length} WAIT`;
   document.getElementById('sig-summary').className=active.length>0?'sec-badge green':'sec-badge gold';
 
   grid.innerHTML=ordered.map((inst,idx)=>{
@@ -396,7 +396,7 @@ function renderSignals(signals, account){
         ${isBuy?'BUY BUY':'SELL SELL'} ${inst.name}
       </button>`:'';
 
-    const reason=(s.reasons||[]).slice(0,2).join(' &middot; ')||'Neutral &mdash; wait for setup';
+    const reason=(s.reasons||[]).slice(0,2).join(' · ')||'Neutral &mdash; wait for setup';
 
     return `<div class="scard ${cc}" style="animation-delay:${idx*0.04}s">
       <div class="sc-top">
@@ -473,7 +473,7 @@ function renderAccount(acc, pnl){
   const pe=document.getElementById('a-pnl');
   pe.textContent=(pnl.total_pnl>=0?'+':'')+'$'+fmt(pnl.total_pnl);
   pe.className='acc-val '+(pnl.total_pnl>=0?'g':'r');
-  document.getElementById('a-wr').textContent=pnl.trade_count+' trades &middot; '+pnl.win_rate+'% win';
+  document.getElementById('a-wr').textContent=pnl.trade_count+' trades · '+pnl.win_rate+'% win';
 
   const me=document.getElementById('a-mar');
   me.textContent='$'+fmt(mar);
@@ -552,7 +552,7 @@ async function fetchNews(){
     const bar=document.getElementById('news-bar');
     const items=document.getElementById('news-items');
     bar.className='news-bar show';
-    items.innerHTML=d.news.slice(0,5).map(n=>`<span class="news-item">${n.title} (${n.country}) &middot; ${n.date}</span>`).join('');
+    items.innerHTML=d.news.slice(0,5).map(n=>`<span class="news-item">${n.title} (${n.country}) · ${n.date}</span>`).join('');
   }catch(e){}
 }
 
@@ -612,3 +612,4 @@ setInterval(fetchAll, 300000); // 5 minutes
 </script>
 </body>
 </html>
+

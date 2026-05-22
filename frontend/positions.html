@@ -359,7 +359,7 @@ function renderPositions(trades){
             <div class="pos-icon ${isLong?'long':'short'}">${isLong?'BUYL':'SELLS'}</div>
             <div>
               <div class="pos-inst">${instDisp}</div>
-              <div class="pos-meta">ID: ${t.id} &middot; ${units.toLocaleString()} units &middot; ${dir}</div>
+              <div class="pos-meta">ID: ${t.id} · ${units.toLocaleString()} units · ${dir}</div>
             </div>
           </div>
           <div class="pos-right">
@@ -583,7 +583,7 @@ async function loadAll(){
       const pe=document.getElementById('a-pnl');
       pe.textContent=(pnl.total_pnl>=0?'+':'')+'$'+fmt(pnl.total_pnl);
       pe.className='acc-val '+(pnl.total_pnl>=0?'g':'r');
-      document.getElementById('a-wr').textContent=pnl.trade_count+' trades &middot; '+pnl.win_rate+'% win';
+      document.getElementById('a-wr').textContent=pnl.trade_count+' trades · '+pnl.win_rate+'% win';
     }
 
     // Open trades
