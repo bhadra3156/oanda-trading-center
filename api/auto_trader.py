@@ -18,7 +18,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-MIN_CONFIDENCE   = 60       # Only alert signals above this %
+MIN_CONFIDENCE   = 65       # Only alert signals above this %
 RISK_PERCENT     = 1.0      # 1% risk per trade
 EXPIRY_MINUTES   = 15       # Cancel pending trade after this many minutes
 MIN_MARGIN       = 20.0     # Minimum free margin in account currency

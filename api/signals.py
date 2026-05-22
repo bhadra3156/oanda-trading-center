@@ -307,7 +307,7 @@ class SignalEngine:
                 "Wait for signal confluence",
             ]
 
-            if bs >= 45 and bs > ss:
+            if bs >= 55 and bs > ss:
                 signal     = "BUY"
                 confidence = min(95, int(bs))
                 reasons    = br
@@ -319,7 +319,7 @@ class SignalEngine:
                     sl = _r(entry - atr * 1.5, 5)
                     tp = _r(entry + atr * 2.5, 5)
 
-            elif ss >= 45 and ss > bs:
+            elif ss >= 55 and ss > bs:
                 signal     = "SELL"
                 confidence = min(95, int(ss))
                 reasons    = sr
