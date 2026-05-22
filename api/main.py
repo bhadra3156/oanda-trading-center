@@ -4,8 +4,8 @@ Runs on Render.com (free)
 """
 
 import os
-import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -35,7 +35,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Oanda Trading Center", version="2.0.0")
 
-# ── CORS — allow everything so Vercel can reach Render ────────────────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -53,14 +52,16 @@ telegram = TelegramBot()
 db       = SupabaseClient()
 calc     = PositionCalculator(oanda)
 
-_alerted = set()
+_alerted  = set()
+_executor = ThreadPoolExecutor(max_workers=8)
 
 INSTRUMENTS = [
-    "EUR_USD","GBP_JPY","XAU_USD","XAG_USD","XPD_USD",
-    "NATGAS_USD","WTICO_USD","CORN_USD","SUGAR_USD",
-    "WHEAT_USD","SOYBN_USD","SPX500_USD","NAS100_USD",
-    "UK100_GBP","DE30_EUR"
+    "EUR_USD", "GBP_JPY", "XAU_USD", "XAG_USD", "XPD_USD",
+    "NATGAS_USD", "WTICO_USD", "CORN_USD", "SUGAR_USD",
+    "WHEAT_USD", "SOYBN_USD", "SPX500_USD", "NAS100_USD",
+    "UK100_GBP", "DE30_EUR"
 ]
+
 
 # ── PYDANTIC MODELS ───────────────────────────────────────────────────────────
 class OrderRequest(BaseModel):
@@ -97,17 +98,14 @@ class DebriefRequest(BaseModel):
 @app.get("/health")
 @app.get("/api/health")
 async def health():
-    now = datetime.utcnow()
+    now  = datetime.utcnow()
     hour = now.hour
     if 7 <= hour < 16:
-        session = "London"
-        in_session = True
+        session, in_session = "London", True
     elif 13 <= hour < 21:
-        session = "New York"
-        in_session = True
+        session, in_session = "New York", True
     else:
-        session = "Asian"
-        in_session = False
+        session, in_session = "Asian", False
     return {
         "status":     "ok",
         "time":       now.isoformat() + "+00:00",
@@ -141,35 +139,50 @@ async def get_prices():
     return {"ok": True, "prices": prices, "timestamp": datetime.utcnow().isoformat()}
 
 
-# ── ANALYSE ONE INSTRUMENT (used internally) ──────────────────────────────────
-def analyse_one(inst: str) -> dict:
+# ── TRADES ────────────────────────────────────────────────────────────────────
+@app.get("/api/trades")
+async def get_trades():
+    try:
+        trades = oanda.get_open_trades()
+        return {"ok": True, "trades": trades}
+    except Exception as e:
+        logger.error(f"Trades error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── ANALYSE ONE INSTRUMENT ────────────────────────────────────────────────────
+def _analyse_one(inst: str) -> dict:
     try:
         sig = signals.analyse(inst)
     except Exception as e:
-        return {"instrument": inst, "signal": "ERROR", "error": str(e),
-                "reasons": [str(e)], "confidence": 0, "price": 0, "ai": None}
+        logger.error(f"Signal error {inst}: {e}")
+        return {
+            "instrument": inst, "signal": "ERROR",
+            "error": str(e), "reasons": [str(e)],
+            "confidence": 0, "price": 0, "ai": None
+        }
 
     if sig.get("signal") in ("BUY", "SELL"):
         try:
-            ai = gemini.analyse(inst, sig)
-            sig["ai"] = ai
-        except Exception:
+            sig["ai"] = gemini.analyse(inst, sig)
+        except Exception as e:
+            logger.error(f"AI error {inst}: {e}")
             sig["ai"] = None
 
         try:
             db.save_signal(inst, sig)
-        except Exception as e:
-            logger.error(f"Supabase signal save: {e}")
+        except Exception:
+            pass
 
-        alert_key = f"{inst}_{sig['signal']}_{sig.get('price', '')}"
+        alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
         if alert_key not in _alerted:
             try:
                 telegram.send_signal(inst, sig, sig.get("ai") or {})
                 _alerted.add(alert_key)
                 if len(_alerted) > 200:
                     _alerted.clear()
-            except Exception as e:
-                logger.error(f"Telegram: {e}")
+            except Exception:
+                pass
     else:
         sig["ai"] = None
 
@@ -180,10 +193,10 @@ def analyse_one(inst: str) -> dict:
 @app.get("/api/signals")
 async def get_signals():
     try:
-        loop = asyncio.get_event_loop()
-        # Run all instruments in parallel using thread pool
+        import asyncio
+        loop = asyncio.get_running_loop()
         tasks = [
-            loop.run_in_executor(None, analyse_one, inst)
+            loop.run_in_executor(_executor, _analyse_one, inst)
             for inst in INSTRUMENTS
         ]
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
@@ -201,18 +214,7 @@ async def get_signals():
 
         return {"ok": True, "signals": results, "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
-        logger.error(f"Signals error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ── TRADES ────────────────────────────────────────────────────────────────────
-@app.get("/api/trades")
-async def get_trades():
-    try:
-        trades = oanda.get_open_trades()
-        return {"ok": True, "trades": trades}
-    except Exception as e:
-        logger.error(f"Trades error: {e}")
+        logger.error(f"Signals endpoint error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -288,7 +290,7 @@ async def get_news():
         events = get_all_upcoming_events(hours=24)
         return {"ok": True, "news": events, "count": len(events)}
     except Exception as e:
-        now = datetime.utcnow()
+        now   = datetime.utcnow()
         today = now.strftime("%Y-%m-%d")
         fallback = [
             {"title": "US Economic Data Window", "country": "USD", "impact": "High",
@@ -319,14 +321,15 @@ async def news_check_instrument(instrument: str):
 async def check_correlation_endpoint(request: CorrelationCheckRequest):
     if not CORRELATION_AVAILABLE:
         return {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
-    positions_dicts = [{"instrument": p.instrument, "direction": p.direction}
-                       for p in request.open_positions]
-    result = check_correlation(
+    positions_dicts = [
+        {"instrument": p.instrument, "direction": p.direction}
+        for p in request.open_positions
+    ]
+    return check_correlation(
         new_instrument=request.new_instrument,
         new_direction=request.new_direction,
         open_positions=positions_dicts,
     )
-    return result
 
 
 @app.get("/api/correlation-map/{instrument}")
@@ -349,10 +352,11 @@ async def ai_debrief(req: DebriefRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── FULL DASHBOARD DATA (single endpoint) ────────────────────────────────────
+# ── FULL DASHBOARD (single call) ──────────────────────────────────────────────
 @app.get("/api/data")
 async def get_dashboard_data():
     try:
+        import asyncio
         summary     = oanda.get_account_summary()
         open_trades = oanda.get_open_trades()
         pnl         = oanda.get_daily_pnl()
@@ -363,8 +367,8 @@ async def get_dashboard_data():
             for t in open_trades
         ]
 
-        loop = asyncio.get_event_loop()
-        tasks = [loop.run_in_executor(None, analyse_one, inst) for inst in INSTRUMENTS]
+        loop  = asyncio.get_running_loop()
+        tasks = [loop.run_in_executor(_executor, _analyse_one, inst) for inst in INSTRUMENTS]
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
         sig_results, prices = {}, {}
@@ -406,18 +410,20 @@ async def get_dashboard_data():
             pass
 
         return {
-            "ok": True, "timestamp": datetime.utcnow().isoformat(),
+            "ok": True,
+            "timestamp": datetime.utcnow().isoformat(),
             "environment": os.getenv("OANDA_ENVIRONMENT", "live").upper(),
             "account": {
-                "balance": float(summary.get("balance", 0)),
-                "nav": float(summary.get("NAV", 0)),
-                "unrealizedPL": float(summary.get("unrealizedPL", 0)),
-                "marginUsed": float(summary.get("marginUsed", 0)),
+                "balance":         float(summary.get("balance", 0)),
+                "nav":             float(summary.get("NAV", 0)),
+                "unrealizedPL":    float(summary.get("unrealizedPL", 0)),
+                "marginUsed":      float(summary.get("marginUsed", 0)),
                 "marginAvailable": float(summary.get("marginAvailable", 0)),
-                "openTradeCount": int(summary.get("openTradeCount", 0)),
-                "currency": summary.get("currency", "GBP"),
+                "openTradeCount":  int(summary.get("openTradeCount", 0)),
+                "currency":        summary.get("currency", "GBP"),
             },
-            "pnl": pnl, "trades": trades_data, "prices": prices, "signals": sig_results,
+            "pnl": pnl, "trades": trades_data,
+            "prices": prices, "signals": sig_results,
         }
     except Exception as e:
         logger.error(f"Dashboard data error: {e}")
