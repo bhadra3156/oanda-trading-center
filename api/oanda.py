@@ -1,4 +1,4 @@
-"""Oanda V20 API Client — clean version, no pip_utils dependency"""
+"""Oanda V20 API Client â€” clean version, no pip_utils dependency"""
 import os, logging
 from datetime import datetime
 from dotenv import load_dotenv
