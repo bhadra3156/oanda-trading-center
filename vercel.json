@@ -1,7 +1,15 @@
 {
-  "rewrites": [
-    { "source": "/frontend/(.*)", "destination": "/frontend/$1" },
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/", "destination": "/frontend/index.html" }
+  "outputDirectory": "frontend",
+  "routes": [
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/index.html", "dest": "/index.html" },
+    { "src": "/calculator.html", "dest": "/calculator.html" },
+    { "src": "/positions.html", "dest": "/positions.html" },
+    { "src": "/journal.html", "dest": "/journal.html" },
+    { "src": "/risk.html", "dest": "/risk.html" },
+    { "src": "/correlation.html", "dest": "/correlation.html" },
+    { "src": "/correlation.css", "dest": "/correlation.css" },
+    { "src": "/correlation.js", "dest": "/correlation.js" },
+    { "src": "/(.*)", "dest": "/$1" }
   ]
 }
