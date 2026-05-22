@@ -1,6 +1,7 @@
 """
 Oanda Trading Center — FastAPI Backend v2
 8 instruments: GBP/JPY, EUR/USD, XAU/USD, SUGAR, WHEAT, SPX500, WTI, NATGAS
+Mode 1 Semi-Auto Trading: Signal → Telegram YES/NO → Execute
 """
 import os, asyncio, logging
 from concurrent.futures import ThreadPoolExecutor
@@ -20,6 +21,12 @@ from api.telegram        import TelegramBot
 from api.supabase_client import SupabaseClient
 from api.calculator      import PositionCalculator
 from api.news_check      import get_all_upcoming_events, check_news_blackout
+from api.auto_trader     import (
+    check_new_signals, safety_check, add_pending_trade,
+    check_expired_trades, process_telegram_reply,
+    calculate_units, get_all_pending, clear_pending_trade,
+    _last_update_id
+)
 
 try:
     from api.correlation import check_correlation, get_correlation_map_for_instrument
@@ -64,6 +71,10 @@ INSTRUMENTS = [
     "NATGAS_USD",
 ]
 
+# ── Auto-trader state ─────────────────────────────────────────────────────────
+_auto_trader_running = False
+_last_tg_update_id   = 0
+
 # ── MODELS ────────────────────────────────────────────────────────────────────
 class OrderRequest(BaseModel):
     instrument:  str
@@ -79,7 +90,7 @@ class CalculatorRequest(BaseModel):
 
 class CloseRequest(BaseModel):
     trade_id: str
-    units:    Optional[int] = None  # None = full close, int = partial close
+    units:    Optional[int] = None
 
 class ModifySlRequest(BaseModel):
     trade_id:     str
@@ -106,19 +117,21 @@ class DebriefRequest(BaseModel):
 async def health():
     now  = datetime.utcnow()
     hour = now.hour
-    if 7 <= hour < 16:
+    if 7 <= hour < 17:
         session, in_session = "London",   True
-    elif 13 <= hour < 21:
+    elif 13 <= hour < 22:
         session, in_session = "New York", True
     else:
         session, in_session = "Asian",    False
     return {
-        "status":       "ok",
-        "time":         now.isoformat() + "+00:00",
-        "version":      "2.0.0",
-        "session":      session,
-        "in_session":   in_session,
-        "instruments":  len(INSTRUMENTS),
+        "status":           "ok",
+        "time":             now.isoformat() + "+00:00",
+        "version":          "2.0.0",
+        "session":          session,
+        "in_session":       in_session,
+        "instruments":      len(INSTRUMENTS),
+        "auto_trader":      "running" if _auto_trader_running else "stopped",
+        "pending_trades":   len(get_all_pending()),
     }
 
 
@@ -130,7 +143,6 @@ async def get_account():
         pnl     = oanda.get_daily_pnl()
         return {"ok": True, "account": summary, "pnl": pnl}
     except Exception as e:
-        logger.error(f"Account error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -161,7 +173,6 @@ def _analyse_one(inst: str) -> dict:
     try:
         sig = signals.analyse(inst)
     except Exception as e:
-        logger.error(f"Signal error {inst}: {e}")
         return {
             "instrument": inst, "signal": "ERROR",
             "error": str(e), "reasons": [str(e)],
@@ -172,15 +183,15 @@ def _analyse_one(inst: str) -> dict:
         try:
             sig["ai"] = gemini.analyse(inst, sig)
         except Exception as e:
-            logger.error(f"AI error {inst}: {e}")
             sig["ai"] = None
 
         try:
             db.save_signal(inst, sig)
         except Exception as e:
-            logger.error(f"Supabase signal save error: {e}")
+            logger.error(f"Supabase save error: {e}")
 
-        alert_key = f"{inst}_{sig['signal']}_{sig.get('price', '')}"
+        # Standard Telegram alert (non-auto)
+        alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
         if alert_key not in _alerted:
             try:
                 telegram.send_signal(inst, sig, sig.get("ai") or {})
@@ -211,19 +222,152 @@ async def get_signals():
             if isinstance(result, Exception):
                 results[inst] = {
                     "instrument": inst, "signal": "ERROR",
-                    "error": str(result), "reasons": [str(result)],
-                    "confidence": 0, "price": 0, "ai": None,
+                    "error": str(result), "confidence": 0,
+                    "price": 0, "ai": None,
                 }
             else:
                 results[inst] = result
 
+        # ── AUTO-TRADER: process new signals ─────────────────────────────────
+        try:
+            new_sigs = check_new_signals(results)
+            for sig in new_sigs:
+                await asyncio.get_running_loop().run_in_executor(
+                    _executor, _process_auto_signal, sig
+                )
+        except Exception as e:
+            logger.error(f"Auto-trader signal processing error: {e}")
+
         return {"ok": True, "signals": results, "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
-        logger.error(f"Signals error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── PLACE ORDER ───────────────────────────────────────────────────────────────
+def _process_auto_signal(sig: dict):
+    """
+    Called when a NEW signal is detected.
+    Runs safety checks, sends Telegram alert if passed.
+    """
+    inst       = sig.get("instrument", "")
+    direction  = sig.get("signal", "")
+    confidence = sig.get("confidence", 0)
+
+    logger.info(f"Auto-trader: processing NEW signal {inst} {direction} ({confidence}%)")
+
+    # Check news blackout first — notify with details if blocked
+    try:
+        news = check_news_blackout(inst)
+        if news.get("in_blackout"):
+            telegram.send_news_block(inst, sig, news)
+            logger.info(f"Auto-trader: {inst} blocked by news blackout")
+            return
+    except Exception as e:
+        logger.error(f"News check error in auto-trader: {e}")
+
+    # Run safety checks
+    corr_checker = check_correlation if CORRELATION_AVAILABLE else None
+    passed, reason = safety_check(sig, oanda, corr_checker)
+
+    if not passed:
+        # Only notify for important blocks (not just low confidence)
+        if "confidence" not in reason.lower():
+            telegram.send_trade_blocked(inst, direction, reason)
+        logger.info(f"Auto-trader: {inst} blocked — {reason}")
+        return
+
+    # Calculate position size
+    try:
+        account = oanda.get_account_summary()
+        balance = float(account.get("balance", 0))
+        atr     = sig.get("atr", 0)
+        units   = calculate_units(balance, atr, sig)
+
+        if units <= 0:
+            logger.warning(f"Auto-trader: {inst} — calculated 0 units, skipping")
+            return
+
+        # Store as pending trade
+        add_pending_trade(sig, units)
+
+        # Send Telegram alert asking for YES/NO
+        ai = sig.get("ai") or {}
+        telegram.send_signal_alert(inst, sig, ai, units)
+        logger.info(f"Auto-trader: alert sent for {inst} {direction} {units} units")
+
+    except Exception as e:
+        logger.error(f"Auto-trader signal processing error: {e}")
+
+
+# ── BACKGROUND TASK: Poll Telegram for replies ────────────────────────────────
+async def telegram_polling_loop():
+    """
+    Runs forever in background.
+    Checks Telegram every 30 seconds for YES/NO replies.
+    Also clears expired pending trades.
+    """
+    global _auto_trader_running, _last_tg_update_id
+    _auto_trader_running = True
+    logger.info("Auto-trader polling loop started")
+
+    corr_checker = check_correlation if CORRELATION_AVAILABLE else None
+
+    while True:
+        try:
+            # 1. Check for expired pending trades
+            expired = check_expired_trades()
+            for trade in expired:
+                telegram.send_expired(trade)
+                logger.info(f"Expired trade notified: {trade.get('instrument')}")
+
+            # 2. Poll Telegram for new messages
+            updates = telegram.get_updates(offset=_last_tg_update_id + 1)
+
+            for update in updates:
+                _last_tg_update_id = update.get("update_id", _last_tg_update_id)
+                message = update.get("message", {})
+                text    = message.get("text", "").strip()
+
+                if not text:
+                    continue
+
+                # Only process messages from YOUR chat ID
+                from_id = str(message.get("chat", {}).get("id", ""))
+                if from_id != str(telegram.chat_id):
+                    logger.warning(f"Message from unknown chat {from_id} — ignored")
+                    continue
+
+                logger.info(f"Telegram reply received: '{text}'")
+
+                # Handle STOP/RESUME specially
+                text_upper = text.upper()
+                if text_upper == "STOP" or text_upper == "PAUSE":
+                    telegram.pause()
+                    telegram.send("*Auto-trader paused.*\nSend RESUME to restart.")
+                    continue
+                elif text_upper == "RESUME":
+                    telegram.resume()
+                    telegram.send("*Auto-trader resumed.*\nWatching for signals.")
+                    continue
+
+                # Process YES/NO/STATUS
+                process_telegram_reply(
+                    text, oanda, telegram, corr_checker
+                )
+
+        except Exception as e:
+            logger.error(f"Telegram polling error: {e}")
+
+        await asyncio.sleep(30)
+
+
+# ── STARTUP: Launch background tasks ─────────────────────────────────────────
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(telegram_polling_loop())
+    logger.info("Auto-trader background task launched")
+
+
+# ── PLACE ORDER (manual) ──────────────────────────────────────────────────────
 @app.post("/api/place-order")
 async def place_order(order: OrderRequest):
     try:
@@ -255,11 +399,10 @@ async def place_order(order: OrderRequest):
             pass
         return {"ok": True, "result": result}
     except Exception as e:
-        logger.error(f"Place order error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── CLOSE TRADE (full or partial) ─────────────────────────────────────────────
+# ── CLOSE TRADE ───────────────────────────────────────────────────────────────
 @app.post("/api/close-trade")
 async def close_trade(req: CloseRequest):
     try:
@@ -269,7 +412,6 @@ async def close_trade(req: CloseRequest):
             result = oanda.close_trade(req.trade_id)
         return {"ok": True, "result": result}
     except Exception as e:
-        logger.error(f"Close trade error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -280,7 +422,6 @@ async def modify_sl(req: ModifySlRequest):
         result = oanda.modify_trade_sl(req.trade_id, req.new_sl_price)
         return {"ok": True, "result": result}
     except Exception as e:
-        logger.error(f"Modify SL error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -294,7 +435,7 @@ async def calculate_position(req: CalculatorRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── CANDLES (for mini charts) ─────────────────────────────────────────────────
+# ── CANDLES ───────────────────────────────────────────────────────────────────
 @app.get("/api/candles/{instrument}")
 async def get_candles(instrument: str, granularity: str = "H4", count: int = 60):
     try:
@@ -324,15 +465,23 @@ async def get_news():
         now   = datetime.utcnow()
         today = now.strftime("%Y-%m-%d")
         return {
-            "ok":     True,
-            "news":   [
-                {"title": "US Economic Data", "country": "USD",
-                 "date": f"{today} 13:30 UTC", "time_utc": f"{today} 13:30 UTC",
-                 "impact": "High", "source": "fallback"},
-            ],
-            "error":  str(e),
-            "source": "fallback",
+            "ok":    True,
+            "news":  [{"title": "US Economic Data", "country": "USD",
+                       "date": f"{today} 13:30 UTC", "impact": "High"}],
+            "error": str(e), "source": "fallback",
         }
+
+
+# ── AUTO-TRADER STATUS ────────────────────────────────────────────────────────
+@app.get("/api/auto-trader/status")
+async def auto_trader_status():
+    return {
+        "ok":             True,
+        "running":        _auto_trader_running,
+        "paused":         telegram.is_paused,
+        "pending_trades": get_all_pending(),
+        "last_update_id": _last_tg_update_id,
+    }
 
 
 # ── NEWS CHECK ────────────────────────────────────────────────────────────────
@@ -359,6 +508,7 @@ async def check_correlation_endpoint(request: CorrelationCheckRequest):
         new_direction=request.new_direction,
         open_positions=positions_dicts,
     )
+
 
 @app.get("/api/correlation-map/{instrument}")
 async def correlation_map_endpoint(instrument: str):

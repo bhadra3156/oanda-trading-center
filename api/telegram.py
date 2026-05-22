@@ -1,5 +1,7 @@
-"""Telegram Bot Alerts"""
-import os, json, logging, urllib.request
+"""
+Telegram Bot — Alerts + Reply Polling for Semi-Auto Trading
+"""
+import os, json, logging, urllib.request, urllib.parse
 from datetime import datetime
 logger = logging.getLogger(__name__)
 
@@ -8,6 +10,7 @@ class TelegramBot:
     def __init__(self):
         self.token   = os.getenv("TELEGRAM_BOT_TOKEN")
         self.chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        self._paused = False
 
     def send(self, message: str) -> bool:
         if not self.token or not self.chat_id:
@@ -27,19 +30,152 @@ class TelegramBot:
                 result = json.loads(r.read())
                 return result.get("ok", False)
         except Exception as e:
-            logger.error(f"Telegram error: {e}")
+            logger.error(f"Telegram send error: {e}")
             return False
 
-    def send_signal(self, instrument: str, sig: dict, ai: dict) -> bool:
-        direction = sig.get("signal", "")
-        arrow     = "UP" if direction == "BUY" else "DN"
+    def get_updates(self, offset: int = 0) -> list:
+        """
+        Poll Telegram for new messages.
+        Returns list of update objects.
+        offset = last_update_id + 1 to avoid reprocessing.
+        """
+        if not self.token:
+            return []
+        try:
+            params = urllib.parse.urlencode({
+                "offset":          offset,
+                "timeout":         5,
+                "allowed_updates": '["message"]',
+            })
+            url = f"https://api.telegram.org/bot{self.token}/getUpdates?{params}"
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+                if data.get("ok"):
+                    return data.get("result", [])
+        except Exception as e:
+            logger.error(f"Telegram getUpdates error: {e}")
+        return []
+
+    def send_signal_alert(self, inst: str, sig: dict, ai: dict, units: int) -> bool:
+        """
+        Send a trade alert asking for YES/NO confirmation.
+        This is the core semi-auto trading message.
+        """
+        if self._paused:
+            return False
+
+        direction  = sig.get("signal", "")
+        arrow      = "BUY" if direction == "BUY" else "SELL"
         ai_verdict = ai.get("verdict", "N/A") if ai else "N/A"
-        reasons   = "\n".join(
+        ai_summary = ai.get("summary", "N/A") if ai else "N/A"
+        confidence = sig.get("confidence", 0)
+        session    = sig.get("session", "")
+
+        # Calculate expiry time
+        from datetime import datetime, timedelta, timezone
+        expires = (datetime.now(timezone.utc) + timedelta(minutes=15)).strftime("%H:%M UTC")
+
+        # R:R display
+        sl   = sig.get("sl", 0)
+        tp   = sig.get("tp", 0)
+        entry= sig.get("entry", 0)
+        if sl and tp and entry:
+            sl_dist = abs(float(entry) - float(sl))
+            tp_dist = abs(float(tp)    - float(entry))
+            rr      = f"{tp_dist/sl_dist:.1f}:1" if sl_dist > 0 else "N/A"
+        else:
+            rr = "N/A"
+
+        msg = (
+            f"*{arrow} SIGNAL — {inst.replace('_', '/')}*\n"
+            f"H4 | {session} | "
+            f"{datetime.now(timezone.utc).strftime('%H:%M UTC')}\n"
+            f"---\n"
+            f"Entry:       `{sig.get('entry', '—')}`\n"
+            f"Stop Loss:   `{sig.get('sl', '—')}`\n"
+            f"Take Profit: `{sig.get('tp', '—')}`\n"
+            f"Size:        `{units:,} units`\n"
+            f"R:R Ratio:   `{rr}`\n"
+            f"Confidence:  `{confidence}%`\n"
+            f"---\n"
+            f"*AI ({ai.get('provider','GROQ').upper()}):* {ai_verdict}\n"
+            f"_{ai_summary}_\n"
+            f"---\n"
+            f"*Reply YES to execute trade*\n"
+            f"Reply NO to skip\n"
+            f"_Expires: {expires}_"
+        )
+        return self.send(msg)
+
+    def send_news_block(self, inst: str, sig: dict, blackout: dict) -> bool:
+        """
+        Notify when a signal is blocked due to news blackout.
+        User is informed WHY and WHEN trading resumes.
+        """
+        direction = sig.get("signal", "")
+        confidence= sig.get("confidence", 0)
+
+        # Get blackout details
+        active = blackout.get("active_blackouts", [])
+        event_title   = active[0].get("title", "Unknown event") if active else "High impact news"
+        event_time    = active[0].get("time_utc", "—")          if active else "—"
+        minutes_away  = active[0].get("minutes_away", 0)         if active else 0
+
+        # Calculate resume time (event time + 30 min buffer)
+        try:
+            from datetime import datetime, timedelta, timezone
+            now     = datetime.now(timezone.utc)
+            resume  = now + timedelta(minutes=abs(minutes_away) + 30)
+            resume_str = resume.strftime("%H:%M UTC")
+        except Exception:
+            resume_str = "after the event"
+
+        msg = (
+            f"*NEWS BLACKOUT — {inst.replace('_','/')} {direction} blocked*\n"
+            f"---\n"
+            f"Event:     {event_title}\n"
+            f"Time:      `{event_time}`\n"
+            f"Minutes:   {abs(int(minutes_away))} min {'before' if minutes_away > 0 else 'after'}\n"
+            f"---\n"
+            f"Signal:    {direction} @ {sig.get('entry','—')}\n"
+            f"Confidence:{confidence}%\n"
+            f"---\n"
+            f"Trading resumes: *{resume_str}*\n"
+            f"_Signal will be re-evaluated on next scan_"
+        )
+        return self.send(msg)
+
+    def send_trade_blocked(self, inst: str, direction: str, reason: str) -> bool:
+        """Notify when a trade is blocked by safety rules."""
+        msg = (
+            f"*TRADE BLOCKED — {inst.replace('_','/')} {direction}*\n"
+            f"Reason: {reason}\n"
+            f"_No action taken_"
+        )
+        return self.send(msg)
+
+    def send_expired(self, trade: dict) -> bool:
+        """Notify when a pending trade expires without confirmation."""
+        inst = trade.get("instrument", "").replace("_", "/")
+        msg  = (
+            f"*Trade expired — {inst}*\n"
+            f"{trade.get('direction')} signal not confirmed\n"
+            f"Expired after 15 minutes\n"
+            f"_No trade placed_"
+        )
+        return self.send(msg)
+
+    def send_signal(self, instrument: str, sig: dict, ai: dict) -> bool:
+        """Standard signal notification (non-auto-trade version)."""
+        direction  = sig.get("signal", "")
+        arrow      = "UP" if direction == "BUY" else "DN"
+        ai_verdict = ai.get("verdict", "N/A") if ai else "N/A"
+        provider   = ai.get("provider", "groq").upper() if ai else "GROQ"
+        cached     = " [cached]" if ai and ai.get("cached") else ""
+        reasons    = "\n".join(
             f"  - {r}" for r in sig.get("reasons", [])[:3]
         )
-        provider  = ai.get("provider", "groq").upper() if ai else "N/A"
-        cached    = " [cached]" if ai and ai.get("cached") else ""
-
         msg = (
             f"*{arrow} {direction} -- {instrument.replace('_', '/')}*\n"
             f"H4 | {sig.get('session', '--')} | "
@@ -64,9 +200,8 @@ class TelegramBot:
     def send_trade_confirmation(
         self, instrument, direction, entry, sl, tp, units
     ) -> bool:
-        status = "TRADE PLACED"
         msg = (
-            f"*{status} -- {instrument.replace('_', '/')}*\n"
+            f"*TRADE PLACED -- {instrument.replace('_', '/')}*\n"
             f"Direction: *{direction}*\n"
             f"Units: `{units:,}`\n"
             f"Entry: `{entry}`\n"
@@ -81,7 +216,7 @@ class TelegramBot:
             f"*MARGIN WARNING*\n"
             f"Margin available: `${margin_avail:.2f}` "
             f"({margin_pct:.1f}% of NAV)\n"
-            f"Risk of forced closure. Close a position immediately.\n"
+            f"Risk of forced closure. Review positions.\n"
             f"_Oanda Trading Center_"
         )
         return self.send(msg)
@@ -90,11 +225,29 @@ class TelegramBot:
         msg = (
             f"*Oanda Trading Center Started*\n"
             f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}\n"
-            f"Signal Engine: Active\n"
-            f"AI: GROQ + Claude fallback\n"
-            f"Instruments: 8 (focused universe)\n"
-            f"Scanning: GBP/JPY, EUR/USD, XAU/USD,\n"
+            f"Mode: Semi-Auto (reply YES/NO to signals)\n"
+            f"Instruments: GBP/JPY, EUR/USD, XAU/USD,\n"
             f"SUGAR, WHEAT, SPX500, WTI, NATGAS\n"
-            f"_Ready to scan_"
+            f"Confidence threshold: 60%+\n"
+            f"Risk per trade: 1%\n"
+            f"Expiry: 15 minutes\n"
+            f"---\n"
+            f"Commands:\n"
+            f"YES — confirm pending trade\n"
+            f"NO — skip pending trade\n"
+            f"STATUS — show pending trades\n"
+            f"STOP — pause auto alerts\n"
+            f"RESUME — resume auto alerts\n"
+            f"_Ready_"
         )
         return self.send(msg)
+
+    def pause(self):
+        self._paused = True
+
+    def resume(self):
+        self._paused = False
+
+    @property
+    def is_paused(self):
+        return self._paused
