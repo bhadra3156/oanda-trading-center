@@ -548,6 +548,8 @@ loadAll();
 setInterval(loadAll,30000);
 </script>
 
+
+<script>
 // ── MARKET PULSE STRIP ────────────────────────────────────────────────────────
 const _pulseAPI = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
   ? 'http://localhost:8000' : 'https://oanda-trading-center.onrender.com';
@@ -649,5 +651,6 @@ async function updatePulse() {
 updatePulse();
 setInterval(updatePulse, 30000);
 setInterval(updateSessions, 60000);
+</script>
 </body>
 </html>
