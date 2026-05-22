@@ -126,7 +126,7 @@ class SupabaseClient:
         trades_for_journal = []
         for s in all_signals:
             trades_for_journal.append({
-                "Date":       s.get("created_at", "")[:16],
+                "Date":       s.get("created_at", ""),
                 "Instrument": s.get("instrument", ""),
                 "Signal":     s.get("signal", ""),
                 "Timeframe":  s.get("timeframe", "H4"),
@@ -134,6 +134,13 @@ class SupabaseClient:
                 "SL":         s.get("sl"),
                 "TP":         s.get("tp"),
                 "Confidence": s.get("confidence", 0),
+                "Session":    s.get("session", ""),
+                "RSI":        s.get("rsi"),
+                "Trend":      s.get("trend", ""),
+                "ATR":        s.get("atr"),
+                "AIVerdict":  s.get("ai_verdict", ""),
+                "AIWarning":  s.get("ai_warning", ""),
+                "AIProvider": s.get("ai_provider", "groq"),
                 "Outcome":    s.get("outcome", ""),
                 "PnL":        s.get("pnl", 0),
                 "Reasons":    s.get("ai_summary", ""),
