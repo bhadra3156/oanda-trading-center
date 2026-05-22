@@ -203,6 +203,19 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 @media(max-width:1200px){.sig-grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:900px){.sig-grid{grid-template-columns:repeat(3,1fr)}.acc-strip{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:600px){.sig-grid{grid-template-columns:repeat(2,1fr)}.acc-strip{grid-template-columns:repeat(2,1fr)}}
+
+/* MARKET PULSE STRIP */
+.pulse-strip{background:rgba(8,11,15,0.98);border-bottom:1px solid var(--border);height:32px;display:flex;align-items:center;padding:0 2rem;gap:0;overflow:hidden;position:sticky;top:52px;z-index:99;backdrop-filter:blur(20px)}
+.pulse-item{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--border);height:100%;flex-shrink:0}
+.pulse-item:last-child{border-right:none;margin-left:auto}
+.pulse-lbl{font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);flex-shrink:0}
+.pulse-val{font-size:11px;font-weight:600;font-family:var(--mono);flex-shrink:0}
+.pulse-chg{font-size:9px;font-family:var(--mono);flex-shrink:0;display:flex;align-items:center;gap:2px}
+.pulse-up{color:var(--green)}.pulse-dn{color:var(--red)}.pulse-neu{color:var(--muted)}
+.pulse-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.pulse-dot.on{background:var(--green);box-shadow:0 0 4px var(--green)}.pulse-dot.off{background:var(--muted)}
+.pulse-sess-item{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+.pulse-sess-item.on{color:var(--green)}.pulse-sess-item.off{color:var(--muted)}
 </style>
 </head>
 <script src="correlation.js"></script>
@@ -224,6 +237,40 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
     <div class="env-badge" id="env-badge">LIVE</div>
   </div>
 </nav>
+<!-- MARKET PULSE STRIP -->
+<div class="pulse-strip" id="pulse-strip">
+  <div class="pulse-item">
+    <span class="pulse-lbl">DXY</span>
+    <span class="pulse-val pulse-neu" id="p-dxy">—</span>
+    <span class="pulse-chg" id="p-dxy-c">—</span>
+  </div>
+  <div class="pulse-item">
+    <span class="pulse-lbl">Gold</span>
+    <span class="pulse-val" id="p-xau">—</span>
+    <span class="pulse-chg" id="p-xau-c">—</span>
+  </div>
+  <div class="pulse-item">
+    <span class="pulse-lbl">WTI</span>
+    <span class="pulse-val" id="p-wti">—</span>
+    <span class="pulse-chg" id="p-wti-c">—</span>
+  </div>
+  <div class="pulse-item">
+    <span class="pulse-lbl">SPX</span>
+    <span class="pulse-val" id="p-spx">—</span>
+    <span class="pulse-chg" id="p-spx-c">—</span>
+  </div>
+  <div class="pulse-item">
+    <span class="pulse-lbl">GBP/JPY</span>
+    <span class="pulse-val" id="p-gbp">—</span>
+    <span class="pulse-chg" id="p-gbp-c">—</span>
+  </div>
+  <div class="pulse-item" style="margin-left:auto;border-right:none;gap:12px">
+    <div class="pulse-sess-item" id="sess-lon"><div class="pulse-dot off"></div>LON</div>
+    <div class="pulse-sess-item" id="sess-ny"><div class="pulse-dot off"></div>NY</div>
+    <div class="pulse-sess-item" id="sess-tok"><div class="pulse-dot off"></div>TOK</div>
+    <div class="pulse-sess-item" id="sess-syd"><div class="pulse-dot off"></div>SYD</div>
+  </div>
+</div>
 
 <div class="main">
 
@@ -850,5 +897,107 @@ fetchNews();
 fetchAll();
 setInterval(fetchAll, 300000); // 5 minutes
 </script>
+
+// ── MARKET PULSE STRIP ────────────────────────────────────────────────────────
+const _pulseAPI = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
+  ? 'http://localhost:8000' : 'https://oanda-trading-center.onrender.com';
+
+let _pulsePrev = {};
+
+function fmtPulse(v, decimals) {
+  return Number(v).toFixed(decimals);
+}
+
+function setPulseItem(valId, chgId, price, prevPrice, decimals) {
+  const valEl = document.getElementById(valId);
+  const chgEl = document.getElementById(chgId);
+  if (!valEl || !chgEl) return;
+  valEl.textContent = fmtPulse(price, decimals);
+  if (prevPrice && prevPrice > 0) {
+    const chgPct = ((price - prevPrice) / prevPrice * 100);
+    const arrow  = chgPct > 0 ? '▲' : chgPct < 0 ? '▼' : '—';
+    const cls    = chgPct > 0 ? 'pulse-up' : chgPct < 0 ? 'pulse-dn' : 'pulse-neu';
+    valEl.className = `pulse-val ${cls}`;
+    chgEl.className = `pulse-chg ${cls}`;
+    chgEl.textContent = `${arrow} ${Math.abs(chgPct).toFixed(2)}%`;
+  } else {
+    valEl.className = 'pulse-val pulse-neu';
+    chgEl.textContent = '';
+  }
+}
+
+function updateSessions() {
+  const h = new Date().getUTCHours();
+  const m = new Date().getUTCMinutes();
+  const t = h + m/60;
+  const sessions = {
+    'sess-lon': t >= 7  && t < 17,
+    'sess-ny':  t >= 13 && t < 22,
+    'sess-tok': t >= 0  && t < 9,
+    'sess-syd': t >= 21 || t < 7,
+  };
+  Object.entries(sessions).forEach(([id, isOpen]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = `pulse-sess-item ${isOpen ? 'on' : 'off'}`;
+    el.querySelector('.pulse-dot').className = `pulse-dot ${isOpen ? 'on' : 'off'}`;
+  });
+}
+
+async function updatePulse() {
+  try {
+    const r = await fetch(`${_pulseAPI}/api/prices`);
+    const d = await r.json();
+    if (!d.ok) return;
+    const p = d.prices;
+
+    // DXY proxy = inverse of EUR/USD
+    // When EUR/USD rises, DXY falls and vice versa
+    if (p.EUR_USD) {
+      const eurusd  = p.EUR_USD.mid;
+      const dxyProxy = 1 / eurusd * 100; // normalised proxy
+      const prevEur  = _pulsePrev.EUR_USD;
+      const prevDxy  = prevEur ? 1/prevEur*100 : null;
+      // DXY is INVERSE of EUR/USD direction
+      setPulseItem('p-dxy','p-dxy-c', dxyProxy, prevDxy, 2);
+      // Flip the colour for DXY (EUR up = DXY down)
+      const dxyEl = document.getElementById('p-dxy');
+      if (dxyEl && prevDxy) {
+        const isUp = dxyProxy > prevDxy;
+        dxyEl.className = `pulse-val ${isUp?'pulse-up':'pulse-dn'}`;
+        const chgEl = document.getElementById('p-dxy-c');
+        if(chgEl){
+          const pct = Math.abs((dxyProxy-prevDxy)/prevDxy*100);
+          chgEl.className = `pulse-chg ${isUp?'pulse-up':'pulse-dn'}`;
+          chgEl.textContent = `${isUp?'▲':'▼'} ${pct.toFixed(2)}%`;
+        }
+      }
+      _pulsePrev.EUR_USD = eurusd;
+    }
+
+    if (p.XAU_USD) {
+      setPulseItem('p-xau','p-xau-c', p.XAU_USD.mid, _pulsePrev.XAU_USD, 2);
+      _pulsePrev.XAU_USD = p.XAU_USD.mid;
+    }
+    if (p.WTICO_USD) {
+      setPulseItem('p-wti','p-wti-c', p.WTICO_USD.mid, _pulsePrev.WTICO_USD, 2);
+      _pulsePrev.WTICO_USD = p.WTICO_USD.mid;
+    }
+    if (p.SPX500_USD) {
+      setPulseItem('p-spx','p-spx-c', p.SPX500_USD.mid, _pulsePrev.SPX500_USD, 1);
+      _pulsePrev.SPX500_USD = p.SPX500_USD.mid;
+    }
+    if (p.GBP_JPY) {
+      setPulseItem('p-gbp','p-gbp-c', p.GBP_JPY.mid, _pulsePrev.GBP_JPY, 3);
+      _pulsePrev.GBP_JPY = p.GBP_JPY.mid;
+    }
+  } catch(e) {}
+  updateSessions();
+}
+
+// Start pulse
+updatePulse();
+setInterval(updatePulse, 30000);
+setInterval(updateSessions, 60000);
 </body>
 </html>
