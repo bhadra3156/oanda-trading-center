@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Risk Manager â€” Oanda Trading Center</title>
+<title>Risk Manager &mdash; Oanda Trading Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -38,17 +38,13 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .page-hdr{margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
 .page-title{font-size:1.4rem;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
 .page-sub{font-size:12px;color:var(--muted);font-family:var(--mono)}
-
-/* CIRCUIT BREAKER BANNER */
 .circuit-breaker{display:none;background:linear-gradient(135deg,rgba(248,81,73,0.12),rgba(248,81,73,0.06));border:2px solid rgba(248,81,73,0.4);border-radius:14px;padding:1.5rem 2rem;margin-bottom:1.5rem;animation:pulse-border 2s infinite}
 @keyframes pulse-border{0%,100%{border-color:rgba(248,81,73,0.4)}50%{border-color:rgba(248,81,73,0.8)}}
 .circuit-breaker.active{display:flex;align-items:center;gap:1.5rem}
-.cb-icon{font-size:2.5rem;flex-shrink:0}
+.cb-icon{font-size:2rem;flex-shrink:0;color:var(--red);font-weight:900}
 .cb-title{font-size:1.1rem;font-weight:800;color:var(--red);letter-spacing:-.01em;margin-bottom:4px}
 .cb-sub{font-size:13px;color:var(--muted2);line-height:1.6}
 .cb-meta{font-family:var(--mono);font-size:12px;color:var(--red);margin-top:6px}
-
-/* ACCOUNT HEALTH GAUGE */
 .health-grid{display:grid;grid-template-columns:300px 1fr;gap:1.5rem;margin-bottom:1.5rem}
 .gauge-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.5rem;display:flex;flex-direction:column;align-items:center}
 .gauge-wrap{position:relative;width:200px;height:120px;margin-bottom:1rem}
@@ -60,8 +56,6 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .health-status.good{background:var(--gdim);color:var(--green)}
 .health-status.warn{background:var(--ydim);color:var(--gold)}
 .health-status.danger{background:var(--rdim);color:var(--red)}
-
-/* RISK METRICS */
 .metrics-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.5rem}
 .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .metric-item{background:var(--bg3);border-radius:10px;padding:12px 14px;border:1px solid var(--border)}
@@ -70,8 +64,6 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .metric-sub{font-size:10px;color:var(--muted);font-family:var(--mono)}
 .metric-bar-wrap{margin-top:8px;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
 .metric-bar{height:100%;border-radius:2px;transition:width 1s ease}
-
-/* LIMIT TRACKERS */
 .limits-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
 .limit-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem;position:relative;overflow:hidden}
 .limit-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--ac,var(--border))}
@@ -79,16 +71,11 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .limit-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
 .limit-name{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
 .limit-badge{font-size:9px;font-weight:800;padding:2px 8px;border-radius:4px;letter-spacing:.08em;text-transform:uppercase}
-.limit-badge.ok{background:var(--gdim);color:var(--green)}
-.limit-badge.warn{background:var(--ydim);color:var(--gold)}
-.limit-badge.danger{background:var(--rdim);color:var(--red)}
-.limit-badge.breached{background:rgba(248,81,73,0.3);color:var(--red);animation:pulse .8s infinite}
+.limit-badge.ok{background:var(--gdim);color:var(--green)}.limit-badge.warn{background:var(--ydim);color:var(--gold)}.limit-badge.danger{background:var(--rdim);color:var(--red)}.limit-badge.breached{background:rgba(248,81,73,0.3);color:var(--red);animation:pulse .8s infinite}
 .limit-used{font-size:1.5rem;font-weight:800;font-family:var(--mono);margin-bottom:3px}
 .limit-max{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px}
 .limit-track{height:8px;background:var(--bg4);border-radius:4px;overflow:hidden}
 .limit-fill{height:100%;border-radius:4px;transition:width 1.2s ease}
-
-/* CORRELATION WARNING */
 .corr-section{margin-bottom:1.5rem}
 .corr-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .corr-hdr{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
@@ -104,13 +91,9 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .corr-chip.open{background:var(--odim);color:var(--orange);border:1px solid rgba(224,123,57,0.2)}
 .corr-chip.closed{background:var(--bg4);color:var(--muted)}
 .corr-warn-text{font-size:11px;color:var(--muted2)}
-
-/* DRAWDOWN CHART */
 .drawdown-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.5rem}
 .drawdown-hdr{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .drawdown-title{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
-
-/* POSITION SIZING TABLE */
 .sizing-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.5rem}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
@@ -118,20 +101,17 @@ th{text-align:left;padding:9px 14px;font-size:9px;font-weight:700;letter-spacing
 td{padding:10px 14px;border-bottom:1px solid var(--border)}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,.015)}
-
-/* RULES CHECKLIST */
 .rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
 .rules-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem}
 .rule-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
 .rule-item:last-child{border-bottom:none}
-.rule-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px}
+.rule-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px;font-family:var(--mono)}
 .rule-icon.pass{background:var(--gdim);color:var(--green)}
 .rule-icon.fail{background:var(--rdim);color:var(--red)}
 .rule-icon.warn{background:var(--ydim);color:var(--gold)}
 .rule-icon.na{background:var(--bg4);color:var(--muted)}
 .rule-text{font-size:12px;color:var(--muted2);line-height:1.5;flex:1}
 .rule-text strong{color:var(--text);font-weight:600}
-
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
 .sec-title{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:7px}
 .sec-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--red);border-radius:2px}
@@ -144,29 +124,34 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <body>
 <nav>
   <div class="nav-logo"><div class="nav-dot"></div>OANDA TRADING CENTER</div>
-  <div class="nav-links"><a href="index.html" class="nav-link">Dashboard</a><a href="calculator.html" class="nav-link">Calculator</a><a href="positions.html" class="nav-link">Positions</a><a href="journal.html" class="nav-link">Journal</a><a href="risk.html" class="nav-link active">Risk</a><a href="correlation.html" class="nav-link">Correlation</a></div>
+  <div class="nav-links">
+    <a href="index.html"       class="nav-link">Dashboard</a>
+    <a href="calculator.html"  class="nav-link">Calculator</a>
+    <a href="positions.html"   class="nav-link">Positions</a>
+    <a href="journal.html"     class="nav-link">Journal</a>
+    <a href="risk.html"        class="nav-link active">Risk</a>
+    <a href="correlation.html" class="nav-link">Correlation</a>
+  </div>
   <div class="nav-right">
-    <div class="nav-bal">Balance: <span id="nav-bal">â€”</span></div>
+    <div class="nav-bal">Balance: <span id="nav-bal">&mdash;</span></div>
     <div class="env-badge">LIVE</div>
   </div>
 </nav>
 <div class="main">
   <div class="page-hdr">
-    <div class="page-title">ðŸ›¡ï¸ Risk Manager</div>
-    <div class="page-sub">Account health Â· Daily loss limits Â· Circuit breaker Â· Correlation warnings Â· Drawdown tracker</div>
+    <div class="page-title">Risk Manager</div>
+    <div class="page-sub">Account health &middot; Daily loss limits &middot; Circuit breaker &middot; Correlation warnings &middot; Drawdown tracker</div>
   </div>
 
-  <!-- CIRCUIT BREAKER BANNER -->
   <div class="circuit-breaker" id="circuit-breaker">
-    <div class="cb-icon">â›”</div>
+    <div class="cb-icon">STOP</div>
     <div>
-      <div class="cb-title">DAILY LOSS LIMIT REACHED â€” TRADING SUSPENDED</div>
-      <div class="cb-sub">Your daily loss has exceeded the 5% limit. All BUY/SELL signals are blocked for today to protect your account from further losses. This is your most important risk rule â€” respect it.</div>
-      <div class="cb-meta" id="cb-meta">Today's loss: â€” | Limit: â€” | Resets at midnight UTC</div>
+      <div class="cb-title">DAILY LOSS LIMIT REACHED &mdash; TRADING SUSPENDED</div>
+      <div class="cb-sub">Your daily loss has exceeded the 5% limit. All BUY/SELL signals are blocked for today to protect your account from further losses. This is your most important risk rule &mdash; respect it.</div>
+      <div class="cb-meta" id="cb-meta">Today's loss: &mdash; | Limit: &mdash; | Resets at midnight UTC</div>
     </div>
   </div>
 
-  <!-- ACCOUNT HEALTH + METRICS -->
   <div class="health-grid">
     <div class="gauge-card">
       <div class="gauge-wrap">
@@ -175,7 +160,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <path id="gauge-fill" d="M 20 110 A 90 90 0 0 1 180 110" fill="none" stroke="#3fb950" stroke-width="16" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="0" style="transition:stroke-dashoffset 1.5s ease,stroke 0.5s"/>
         </svg>
         <div class="gauge-value">
-          <div class="gauge-num" id="health-score">â€”</div>
+          <div class="gauge-num" id="health-score">&mdash;</div>
           <div class="gauge-lbl">Health Score</div>
         </div>
       </div>
@@ -187,79 +172,68 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="metrics-grid">
         <div class="metric-item">
           <div class="metric-lbl">Balance</div>
-          <div class="metric-val g" id="m-balance" style="color:var(--green)">â€”</div>
+          <div class="metric-val" id="m-balance" style="color:var(--green)">&mdash;</div>
           <div class="metric-sub">Account currency</div>
         </div>
         <div class="metric-item">
           <div class="metric-lbl">Net Asset Value</div>
-          <div class="metric-val" id="m-nav" style="color:var(--blue)">â€”</div>
-          <div class="metric-sub" id="m-upl">Unrealized: â€”</div>
+          <div class="metric-val" id="m-nav" style="color:var(--blue)">&mdash;</div>
+          <div class="metric-sub" id="m-upl">Unrealized: &mdash;</div>
         </div>
         <div class="metric-item">
           <div class="metric-lbl">Margin Available</div>
-          <div class="metric-val" id="m-mar">â€”</div>
-          <div class="metric-sub" id="m-mar-pct">â€”% of NAV</div>
+          <div class="metric-val" id="m-mar">&mdash;</div>
+          <div class="metric-sub" id="m-mar-pct">&mdash;% of NAV</div>
           <div class="metric-bar-wrap"><div class="metric-bar" id="m-mar-bar" style="background:var(--green)"></div></div>
         </div>
         <div class="metric-item">
           <div class="metric-lbl">Margin Used</div>
-          <div class="metric-val" id="m-mused" style="color:var(--orange)">â€”</div>
-          <div class="metric-sub" id="m-mused-pct">â€”% of balance</div>
+          <div class="metric-val" id="m-mused" style="color:var(--orange)">&mdash;</div>
+          <div class="metric-sub" id="m-mused-pct">&mdash;% of balance</div>
           <div class="metric-bar-wrap"><div class="metric-bar" id="m-mused-bar" style="background:var(--orange)"></div></div>
         </div>
         <div class="metric-item">
           <div class="metric-lbl">Open Trades</div>
-          <div class="metric-val" id="m-trades" style="color:var(--gold)">â€”</div>
+          <div class="metric-val" id="m-trades" style="color:var(--gold)">&mdash;</div>
           <div class="metric-sub">Max allowed: 3</div>
           <div class="metric-bar-wrap"><div class="metric-bar" id="m-trades-bar" style="background:var(--gold)"></div></div>
         </div>
         <div class="metric-item">
-          <div class="metric-lbl">Today's P&L</div>
-          <div class="metric-val" id="m-pnl">â€”</div>
-          <div class="metric-sub" id="m-pnl-sub">â€”</div>
+          <div class="metric-lbl">Today's P&amp;L</div>
+          <div class="metric-val" id="m-pnl">&mdash;</div>
+          <div class="metric-sub" id="m-pnl-sub">&mdash;</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- DAILY / WEEKLY / MONTHLY LIMITS -->
   <div class="sec-hdr"><div class="sec-title">Loss Limit Circuit Breakers</div></div>
   <div class="limits-grid">
-    <div class="limit-card" id="lc-daily">
-      <div class="limit-hdr">
-        <span class="limit-name">Daily Loss Limit</span>
-        <span class="limit-badge ok" id="lc-daily-badge">OK</span>
-      </div>
+    <div class="limit-card ok" id="lc-daily">
+      <div class="limit-hdr"><span class="limit-name">Daily Loss Limit</span><span class="limit-badge ok" id="lc-daily-badge">OK</span></div>
       <div class="limit-used" id="lc-daily-used">$0.00</div>
-      <div class="limit-max" id="lc-daily-max">Limit: 5% = â€”</div>
+      <div class="limit-max" id="lc-daily-max">Limit: 5% = &mdash;</div>
       <div class="limit-track"><div class="limit-fill" id="lc-daily-bar" style="width:0%;background:var(--green)"></div></div>
       <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:8px">Resets at midnight UTC</div>
     </div>
-    <div class="limit-card" id="lc-weekly">
-      <div class="limit-hdr">
-        <span class="limit-name">Weekly Loss Limit</span>
-        <span class="limit-badge ok" id="lc-weekly-badge">OK</span>
-      </div>
+    <div class="limit-card ok" id="lc-weekly">
+      <div class="limit-hdr"><span class="limit-name">Weekly Loss Limit</span><span class="limit-badge ok" id="lc-weekly-badge">OK</span></div>
       <div class="limit-used" id="lc-weekly-used">$0.00</div>
-      <div class="limit-max" id="lc-weekly-max">Limit: 10% = â€”</div>
+      <div class="limit-max" id="lc-weekly-max">Limit: 10% = &mdash;</div>
       <div class="limit-track"><div class="limit-fill" id="lc-weekly-bar" style="width:0%;background:var(--green)"></div></div>
       <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:8px">Resets Monday midnight UTC</div>
     </div>
-    <div class="limit-card" id="lc-drawdown">
-      <div class="limit-hdr">
-        <span class="limit-name">Max Drawdown</span>
-        <span class="limit-badge ok" id="lc-dd-badge">OK</span>
-      </div>
+    <div class="limit-card ok" id="lc-drawdown">
+      <div class="limit-hdr"><span class="limit-name">Max Drawdown</span><span class="limit-badge ok" id="lc-dd-badge">OK</span></div>
       <div class="limit-used" id="lc-dd-used">0.00%</div>
       <div class="limit-max">Limit: 20% from peak</div>
       <div class="limit-track"><div class="limit-fill" id="lc-dd-bar" style="width:0%;background:var(--green)"></div></div>
-      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:8px">Peak NAV: <span id="lc-peak">â€”</span></div>
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:8px">Peak NAV: <span id="lc-peak">&mdash;</span></div>
     </div>
   </div>
 
-  <!-- CORRELATION WARNINGS -->
   <div class="corr-section">
-    <div class="sec-hdr"><div class="sec-title">Correlation Risk â€” Open Positions</div></div>
+    <div class="sec-hdr"><div class="sec-title">Correlation Risk &mdash; Open Positions</div></div>
     <div class="corr-card">
       <div class="corr-hdr">
         <span class="corr-title">Correlated Instrument Groups</span>
@@ -269,24 +243,22 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
   </div>
 
-  <!-- DRAWDOWN CHART -->
   <div class="drawdown-card">
     <div class="drawdown-hdr">
-      <span class="drawdown-title">NAV History & Drawdown Tracker</span>
-      <span id="dd-badge" style="font-size:11px;font-family:var(--mono);color:var(--muted)">â€”</span>
+      <span class="drawdown-title">NAV History &amp; Drawdown Tracker</span>
+      <span id="dd-badge" style="font-size:11px;font-family:var(--mono);color:var(--muted)">&mdash;</span>
     </div>
     <div style="padding:1.25rem"><div style="position:relative;height:160px"><canvas id="dd-chart"></canvas></div></div>
   </div>
 
-  <!-- MAX POSITION SIZES -->
-  <div class="sec-hdr"><div class="sec-title">Maximum Position Sizes â€” 1% Risk</div></div>
+  <div class="sec-hdr"><div class="sec-title">Maximum Position Sizes &mdash; 1% Risk</div></div>
   <div class="sizing-card">
     <div class="table-wrap">
       <table>
         <thead><tr>
           <th>Instrument</th><th>Category</th>
           <th>Max Units (1%)</th><th>Max Units (2%)</th>
-          <th>Live Price</th><th>ATR (H4)</th><th>SL Pips</th>
+          <th>Live Price</th><th>ATR Est.</th><th>SL Pips</th>
         </tr></thead>
         <tbody id="sizing-body">
           <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted)"><span class="spin"></span>Loading...</td></tr>
@@ -295,311 +267,238 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
   </div>
 
-  <!-- TRADING RULES CHECKLIST -->
   <div class="rules-grid">
     <div class="rules-card">
-      <div style="font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">âœ… Your Trading Rules â€” Today's Check</div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Your Trading Rules &mdash; Today's Check</div>
       <div class="rule-item">
-        <div class="rule-icon pass" id="rule-session">âœ“</div>
+        <div class="rule-icon pass" id="rule-session">OK</div>
         <div class="rule-text"><strong>Trading Session</strong><br><span id="rule-session-text">Checking current session...</span></div>
       </div>
       <div class="rule-item">
-        <div class="rule-icon na" id="rule-trades">â€”</div>
+        <div class="rule-icon na" id="rule-trades">&mdash;</div>
         <div class="rule-text"><strong>Max Open Trades (3)</strong><br><span id="rule-trades-text">Checking open trades...</span></div>
       </div>
       <div class="rule-item">
-        <div class="rule-icon na" id="rule-daily">â€”</div>
-        <div class="rule-text"><strong>Daily Loss Limit (5%)</strong><br><span id="rule-daily-text">Checking today's P&L...</span></div>
+        <div class="rule-icon na" id="rule-daily">&mdash;</div>
+        <div class="rule-text"><strong>Daily Loss Limit (5%)</strong><br><span id="rule-daily-text">Checking today's P&amp;L...</span></div>
       </div>
       <div class="rule-item">
-        <div class="rule-icon na" id="rule-margin">â€”</div>
-        <div class="rule-text"><strong>Margin Available (>10%)</strong><br><span id="rule-margin-text">Checking margin levels...</span></div>
+        <div class="rule-icon na" id="rule-margin">&mdash;</div>
+        <div class="rule-text"><strong>Margin Available (&gt;10%)</strong><br><span id="rule-margin-text">Checking margin levels...</span></div>
       </div>
       <div class="rule-item">
-        <div class="rule-icon na" id="rule-corr">â€”</div>
+        <div class="rule-icon na" id="rule-corr">&mdash;</div>
         <div class="rule-text"><strong>Correlated Positions</strong><br><span id="rule-corr-text">Checking correlations...</span></div>
       </div>
     </div>
     <div class="rules-card">
-      <div style="font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">ðŸ“‹ Your Risk Rules Reference</div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem">Your Risk Rules Reference</div>
       <div class="rule-item"><div class="rule-icon pass">1</div><div class="rule-text"><strong>Max risk per trade: 1% of balance</strong><br>Never risk more than 1% on any single trade</div></div>
-      <div class="rule-item"><div class="rule-icon pass">2</div><div class="rule-text"><strong>Stop loss: 1.5Ã— ATR(14)</strong><br>Always set SL before entering â€” no exceptions</div></div>
-      <div class="rule-item"><div class="rule-icon pass">3</div><div class="rule-text"><strong>Take profit: 2.5Ã— ATR(14)</strong><br>Minimum R:R of 1.5:1 before entering any trade</div></div>
+      <div class="rule-item"><div class="rule-icon pass">2</div><div class="rule-text"><strong>Stop loss: 1.5x ATR(14)</strong><br>Always set SL before entering &mdash; no exceptions</div></div>
+      <div class="rule-item"><div class="rule-icon pass">3</div><div class="rule-text"><strong>Take profit: 2.5x ATR(14)</strong><br>Minimum R:R of 1.5:1 before entering any trade</div></div>
       <div class="rule-item"><div class="rule-icon pass">4</div><div class="rule-text"><strong>Max 3 open trades simultaneously</strong><br>More than 3 = overexposure, wait for a close</div></div>
       <div class="rule-item"><div class="rule-icon pass">5</div><div class="rule-text"><strong>Never trade 30 min before/after major news</strong><br>Check economic calendar before every entry</div></div>
-      <div class="rule-item"><div class="rule-icon pass">6</div><div class="rule-text"><strong>Move SL to breakeven at 1:1 profit</strong><br>Once in profit equal to your risk â€” protect it</div></div>
+      <div class="rule-item"><div class="rule-icon pass">6</div><div class="rule-text"><strong>Move SL to breakeven at 1:1 profit</strong><br>Once in profit equal to your risk &mdash; protect it</div></div>
     </div>
   </div>
-
 </div>
+
 <script>
 const API = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
   ? 'http://localhost:8000'
   : 'https://oanda-trading-center.onrender.com';
 
-const CORR_MAP = {
-  'Grains':     {instruments:['CORN_USD','WHEAT_USD','SOYBN_USD'],color:'var(--gold)',level:'STRONG'},
-  'Metals':     {instruments:['XAU_USD','XAG_USD','XPD_USD'],color:'var(--cyan)',level:'MODERATE'},
-  'Energy':     {instruments:['NATGAS_USD','WTICO_USD'],color:'var(--orange)',level:'STRONG'},
-  'Soft Comms': {instruments:['SUGAR_USD'],color:'var(--muted)',level:'LOW'},
-  'US Indices': {instruments:['SPX500_USD','NAS100_USD'],color:'var(--purple)',level:'VERY_STRONG'},
-  'EU Indices': {instruments:['UK100_GBP','DE30_EUR'],color:'var(--blue)',level:'MODERATE'},
-  'FX':         {instruments:['EUR_USD','GBP_JPY'],color:'var(--green)',level:'LOW'},
+const CORR_MAP={
+  'Grains':{instruments:['CORN_USD','WHEAT_USD','SOYBN_USD'],level:'STRONG'},
+  'Metals':{instruments:['XAU_USD','XAG_USD','XPD_USD'],level:'MODERATE'},
+  'Energy':{instruments:['NATGAS_USD','WTICO_USD'],level:'STRONG'},
+  'US Indices':{instruments:['SPX500_USD','NAS100_USD'],level:'VERY_STRONG'},
+  'EU Indices':{instruments:['UK100_GBP','DE30_EUR'],level:'MODERATE'},
+  'FX':{instruments:['EUR_USD','GBP_JPY'],level:'LOW'},
 };
-
-let ddChart = null;
-let navHistory = [];
-
+let ddChart=null,navHistory=[];
 function fmt(n,d=2){return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}
-
-function getSession(){
-  const h = new Date().getUTCHours();
-  if(h>=7&&h<=16) return {name:'LONDON',ok:true};
-  if(h>=13&&h<=21) return {name:'NEW_YORK',ok:true};
-  return {name:'ASIAN',ok:false};
-}
+function getSession(){const h=new Date().getUTCHours();if(h>=7&&h<=16)return{name:'LONDON',ok:true};if(h>=13&&h<=21)return{name:'NEW_YORK',ok:true};return{name:'ASIAN',ok:false};}
 
 function updateGauge(score){
-  const fill = document.getElementById('gauge-fill');
-  const total = 283;
-  const offset = total - (score/100)*total;
-  fill.style.strokeDashoffset = offset;
-  fill.style.stroke = score>=70?'#3fb950':score>=40?'#d29922':'#f85149';
-  document.getElementById('health-score').textContent = score;
-  document.getElementById('health-score').style.color = score>=70?'var(--green)':score>=40?'var(--gold)':'var(--red)';
-  const el = document.getElementById('health-status');
-  if(score>=70){el.textContent='Account Healthy';el.className='health-status good';}
-  else if(score>=40){el.textContent='Caution â€” Review';el.className='health-status warn';}
-  else{el.textContent='High Risk â€” Act Now';el.className='health-status danger';}
+  const fill=document.getElementById('gauge-fill');
+  fill.style.strokeDashoffset=283-(score/100)*283;
+  fill.style.stroke=score>=70?'#3fb950':score>=40?'#d29922':'#f85149';
+  const el=document.getElementById('health-score');
+  el.textContent=score;el.style.color=score>=70?'var(--green)':score>=40?'var(--gold)':'var(--red)';
+  const st=document.getElementById('health-status');
+  if(score>=70){st.textContent='Account Healthy';st.className='health-status good';}
+  else if(score>=40){st.textContent='Caution - Review';st.className='health-status warn';}
+  else{st.textContent='High Risk - Act Now';st.className='health-status danger';}
 }
 
-function setLimitCard(id,used,limit,label,maxLabel){
-  const pct = limit>0?Math.min(100,Math.abs(used)/limit*100):0;
-  const absUsed = Math.abs(used);
-  const status = pct>=100?'breached':pct>=80?'danger':pct>=50?'warn':'ok';
-  const card = document.getElementById(`lc-${id}`);
-  card.className = `limit-card ${pct>=80?'danger':pct>=50?'warn':'ok'}`;
-  document.getElementById(`lc-${id}-used`).textContent = '$'+fmt(absUsed);
-  document.getElementById(`lc-${id}-used`).style.color = pct>=80?'var(--red)':pct>=50?'var(--gold)':'var(--text)';
-  document.getElementById(`lc-${id}-max`).textContent = maxLabel;
-  const bar = document.getElementById(`lc-${id}-bar`);
-  bar.style.width = pct+'%';
-  bar.style.background = pct>=100?'var(--red)':pct>=80?'var(--orange)':pct>=50?'var(--gold)':'var(--green)';
-  const badge = document.getElementById(`lc-${id}-badge`);
-  badge.textContent = pct>=100?'BREACHED':pct>=80?'DANGER':pct>=50?'WARNING':'OK';
-  badge.className = `limit-badge ${status}`;
+function setLimitCard(id,used,limit,maxLabel){
+  const pct=limit>0?Math.min(100,Math.abs(used)/limit*100):0;
+  const absUsed=Math.abs(used);
+  const status=pct>=100?'breached':pct>=80?'danger':pct>=50?'warn':'ok';
+  document.getElementById(`lc-${id}`).className=`limit-card ${pct>=80?'danger':pct>=50?'warn':'ok'}`;
+  const usedEl=document.getElementById(`lc-${id}-used`);
+  usedEl.textContent='$'+fmt(absUsed);usedEl.style.color=pct>=80?'var(--red)':pct>=50?'var(--gold)':'var(--text)';
+  document.getElementById(`lc-${id}-max`).textContent=maxLabel;
+  const bar=document.getElementById(`lc-${id}-bar`);
+  bar.style.width=pct+'%';bar.style.background=pct>=100?'var(--red)':pct>=80?'var(--orange)':pct>=50?'var(--gold)':'var(--green)';
+  const badge=document.getElementById(`lc-${id}-badge`);
+  badge.textContent=pct>=100?'BREACHED':pct>=80?'DANGER':pct>=50?'WARNING':'OK';
+  badge.className=`limit-badge ${status}`;
 }
 
 function renderCorrelation(openInstruments){
-  const body = document.getElementById('corr-body');
-  const summary = document.getElementById('corr-summary');
-  let warnings = 0;
-  let html = '';
+  const body=document.getElementById('corr-body'),summary=document.getElementById('corr-summary');
+  let warnings=0,html='';
   Object.entries(CORR_MAP).forEach(([group,data])=>{
-    const open = data.instruments.filter(i=>openInstruments.includes(i));
-    const closed = data.instruments.filter(i=>!openInstruments.includes(i));
-    if(data.instruments.length<2) return;
-    const level = open.length>=2?'danger':open.length===1?'ok':'ok';
-    if(open.length>=2) warnings++;
-    html += `<div class="corr-group ${level}">
-      <div class="corr-group-title" style="color:${open.length>=2?'var(--red)':open.length===1?'var(--muted2)':'var(--muted)'}">
-        ${open.length>=2?'âš ï¸':open.length===1?'ðŸ“':'âœ“'} ${group}
-        ${open.length>=2?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;background:var(--rdim);color:var(--red)">${open.length} OPEN â€” CORRELATED RISK</span>`:''}
+    const open=data.instruments.filter(i=>openInstruments.includes(i));
+    const closed=data.instruments.filter(i=>!openInstruments.includes(i));
+    if(data.instruments.length<2)return;
+    const level=open.length>=2?'danger':'ok';
+    if(open.length>=2)warnings++;
+    html+=`<div class="corr-group ${level}">
+      <div class="corr-group-title" style="color:${open.length>=2?'var(--red)':'var(--muted)'}">
+        ${open.length>=2?'[!]':'[OK]'} ${group}
+        ${open.length>=2?`<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;background:var(--rdim);color:var(--red)">${open.length} OPEN - CORRELATED RISK</span>`:''}
       </div>
       <div class="corr-instruments">
         ${open.map(i=>`<span class="corr-chip open">${i.replace('_USD','').replace('_GBP','').replace('_EUR','')}</span>`).join('')}
         ${closed.map(i=>`<span class="corr-chip closed">${i.replace('_USD','').replace('_GBP','').replace('_EUR','')}</span>`).join('')}
       </div>
-      ${open.length>=2?`<div class="corr-warn-text">âš ï¸ You have ${open.length} correlated ${group.toLowerCase()} positions open simultaneously. Your actual risk is ${open.length}Ã— the calculator shows. Consider closing one.</div>`:''}
+      ${open.length>=2?`<div class="corr-warn-text">You have ${open.length} correlated ${group.toLowerCase()} positions open simultaneously. Your actual risk is ${open.length}x what the calculator shows. Consider closing one.</div>`:''}
     </div>`;
   });
-  body.innerHTML = html || '<div style="color:var(--muted);font-family:var(--mono);font-size:12px">No open positions â€” no correlation risk</div>';
-  summary.textContent = warnings>0?`${warnings} correlation conflict${warnings>1?'s':''}!`:'No conflicts';
-  summary.style.color = warnings>0?'var(--red)':'var(--green)';
+  body.innerHTML=html||'<div style="color:var(--muted);font-family:var(--mono);font-size:12px">No open positions &mdash; no correlation risk</div>';
+  summary.textContent=warnings>0?`${warnings} correlation conflict${warnings>1?'s':''}!`:'No conflicts';
+  summary.style.color=warnings>0?'var(--red)':'var(--green)';
   return warnings;
 }
 
-function renderSizingTable(account, prices){
-  const bal = parseFloat(account.balance||0);
-  const instruments = [
-    {id:'EUR_USD',cat:'FX',pip:0.0001},
-    {id:'GBP_JPY',cat:'FX',pip:0.01},
-    {id:'XAU_USD',cat:'Metal',pip:0.1},
-    {id:'XAG_USD',cat:'Metal',pip:0.01},
-    {id:'NATGAS_USD',cat:'Energy',pip:0.001},
-    {id:'WTICO_USD',cat:'Energy',pip:0.01},
-    {id:'CORN_USD',cat:'Agri',pip:0.001},
-    {id:'SUGAR_USD',cat:'Agri',pip:0.0001},
-    {id:'WHEAT_USD',cat:'Agri',pip:0.001},
-    {id:'SOYBN_USD',cat:'Agri',pip:0.001},
-    {id:'SPX500_USD',cat:'Index',pip:1},
-    {id:'NAS100_USD',cat:'Index',pip:1},
+function renderSizingTable(account,prices){
+  const bal=parseFloat(account.balance||0);
+  const instruments=[
+    {id:'EUR_USD',cat:'FX',pip:0.0001},{id:'GBP_JPY',cat:'FX',pip:0.01},
+    {id:'XAU_USD',cat:'Metal',pip:0.1},{id:'XAG_USD',cat:'Metal',pip:0.01},
+    {id:'NATGAS_USD',cat:'Energy',pip:0.001},{id:'WTICO_USD',cat:'Energy',pip:0.01},
+    {id:'CORN_USD',cat:'Agri',pip:0.001},{id:'SUGAR_USD',cat:'Agri',pip:0.0001},
+    {id:'WHEAT_USD',cat:'Agri',pip:0.001},{id:'SOYBN_USD',cat:'Agri',pip:0.001},
+    {id:'SPX500_USD',cat:'Index',pip:1},{id:'NAS100_USD',cat:'Index',pip:1},
   ];
-  const body = document.getElementById('sizing-body');
+  const body=document.getElementById('sizing-body');
   if(!bal){body.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1.5rem">Account data unavailable</td></tr>';return;}
-  body.innerHTML = instruments.map(inst=>{
-    const p = prices[inst.id];
-    const price = p?(p.bid+p.ask)/2:0;
-    const atr = price*0.008;
-    const slPips = Math.round(atr*1.5/inst.pip);
-    const riskAmt1 = bal*0.01;
-    const riskAmt2 = bal*0.02;
-    const pipVal = inst.cat==='Index'?1:inst.cat==='Metal'&&inst.id.includes('XAU')?1:0.1;
-    const units1 = slPips>0?Math.max(1,Math.floor(riskAmt1/slPips/pipVal*10000)):0;
-    const units2 = slPips>0?Math.max(1,Math.floor(riskAmt2/slPips/pipVal*10000)):0;
+  body.innerHTML=instruments.map(inst=>{
+    const p=prices[inst.id],price=p?(p.bid+p.ask)/2:0;
+    const atr=price*0.008,slPips=Math.round(atr*1.5/inst.pip);
+    const riskAmt1=bal*0.01,riskAmt2=bal*0.02;
+    const pipVal=inst.cat==='Index'?1:inst.cat==='Metal'&&inst.id.includes('XAU')?1:0.1;
+    const units1=slPips>0?Math.max(1,Math.floor(riskAmt1/slPips/pipVal*10000)):0;
+    const units2=slPips>0?Math.max(1,Math.floor(riskAmt2/slPips/pipVal*10000)):0;
     return `<tr>
-      <td style="font-weight:700;color:var(--gold);font-family:var(--mono)">${inst.id.replace('_USD','').replace('_GBP','').replace('_EUR','')}</td>
+      <td style="font-weight:700;color:var(--gold)">${inst.id.replace('_USD','').replace('_GBP','').replace('_EUR','')}</td>
       <td style="color:var(--muted)">${inst.cat}</td>
       <td style="color:var(--cyan);font-weight:700">${units1.toLocaleString()}</td>
       <td style="color:var(--blue);font-weight:700">${units2.toLocaleString()}</td>
-      <td>${price?price.toFixed(price>100?2:price>1?4:5):'â€”'}</td>
-      <td style="color:var(--muted)">${atr?(atr).toFixed(4):'â€”'}</td>
-      <td style="color:var(--muted)">${slPips||'â€”'}</td>
+      <td>${price?price.toFixed(price>100?2:price>1?4:5):'--'}</td>
+      <td style="color:var(--muted)">${atr?atr.toFixed(4):'--'}</td>
+      <td style="color:var(--muted)">${slPips||'--'}</td>
     </tr>`;
   }).join('');
 }
 
-function renderRulesChecklist(account, pnl, openCount, corrWarnings){
-  const bal = parseFloat(account.balance||0);
-  const mar = parseFloat(account.marginAvailable||0);
-  const nav = parseFloat(account.NAV||account.nav||0);
-  const marPct = nav>0?mar/nav*100:0;
-  const dailyLoss = Math.abs(Math.min(0,pnl.total_pnl||0));
-  const dailyLimitAmt = bal*0.05;
-  const session = getSession();
-
-  const setRule = (id,status,text)=>{
-    const icon = document.getElementById(`rule-${id}`);
-    const textEl = document.getElementById(`rule-${id}-text`);
-    icon.className = `rule-icon ${status}`;
-    icon.textContent = status==='pass'?'âœ“':status==='fail'?'âœ—':status==='warn'?'!':'â€”';
-    textEl.textContent = text;
+function renderRulesChecklist(account,pnl,openCount,corrWarnings){
+  const bal=parseFloat(account.balance||0),mar=parseFloat(account.marginAvailable||0);
+  const nav=parseFloat(account.NAV||account.nav||0),marPct=nav>0?mar/nav*100:0;
+  const dailyLoss=Math.abs(Math.min(0,pnl.total_pnl||0)),dailyLimitAmt=bal*0.05;
+  const session=getSession();
+  const setRule=(id,status,text)=>{
+    const icon=document.getElementById(`rule-${id}`),textEl=document.getElementById(`rule-${id}-text`);
+    icon.className=`rule-icon ${status}`;
+    icon.textContent=status==='pass'?'OK':status==='fail'?'NO':status==='warn'?'!':'--';
+    textEl.textContent=text;
   };
-
-  setRule('session', session.ok?'pass':'warn',
-    session.ok?`${session.name} session â€” optimal trading hours`:`${session.name} session â€” low liquidity, reduce position sizes`);
-  setRule('trades', openCount<=3?'pass':'fail',
-    openCount<=3?`${openCount}/3 positions open â€” within limit`:`${openCount}/3 â€” over limit! Close ${openCount-3} trade${openCount-3>1?'s':''}`);
-  setRule('daily', dailyLoss<dailyLimitAmt*0.5?'pass':dailyLoss<dailyLimitAmt?'warn':'fail',
-    dailyLoss===0?'No losses today â€” all clear':dailyLoss<dailyLimitAmt?`$${fmt(dailyLoss)} lost (${fmt(dailyLoss/bal*100,1)}%) â€” ${fmt((dailyLimitAmt-dailyLoss),2)} remaining`:`LIMIT BREACHED â€” $${fmt(dailyLoss)} lost today`);
-  setRule('margin', marPct>20?'pass':marPct>10?'warn':'fail',
-    marPct>20?`${fmt(marPct,1)}% margin available â€” healthy`:`${fmt(marPct,1)}% margin available â€” ${marPct<10?'CRITICAL: risk of margin call!':'low, be careful'}`);
-  setRule('corr', corrWarnings===0?'pass':'warn',
-    corrWarnings===0?'No correlated positions detected':`${corrWarnings} correlated group${corrWarnings>1?'s':''} open â€” actual risk is multiplied`);
+  setRule('session',session.ok?'pass':'warn',session.ok?`${session.name} session - optimal trading hours`:`${session.name} session - low liquidity, reduce sizes`);
+  setRule('trades',openCount<=3?'pass':'fail',openCount<=3?`${openCount}/3 positions open - within limit`:`${openCount}/3 - over limit! Close ${openCount-3} trade${openCount-3>1?'s':''}`);
+  setRule('daily',dailyLoss<dailyLimitAmt*0.5?'pass':dailyLoss<dailyLimitAmt?'warn':'fail',
+    dailyLoss===0?'No losses today - all clear':dailyLoss<dailyLimitAmt?`$${fmt(dailyLoss)} lost (${fmt(dailyLoss/bal*100,1)}%) - $${fmt(dailyLimitAmt-dailyLoss)} remaining`:`LIMIT BREACHED - $${fmt(dailyLoss)} lost today`);
+  setRule('margin',marPct>20?'pass':marPct>10?'warn':'fail',marPct>20?`${fmt(marPct,1)}% margin available - healthy`:`${fmt(marPct,1)}% margin available - ${marPct<10?'CRITICAL: risk of margin call!':'low, be careful'}`);
+  setRule('corr',corrWarnings===0?'pass':'warn',corrWarnings===0?'No correlated positions detected':`${corrWarnings} correlated group${corrWarnings>1?'s':''} open - actual risk is multiplied`);
 }
 
 function renderDdChart(nav){
-  const ctx = document.getElementById('dd-chart').getContext('2d');
-  if(ddChart) ddChart.destroy();
+  const ctx=document.getElementById('dd-chart').getContext('2d');
+  if(ddChart)ddChart.destroy();
   navHistory.push({t:new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),v:nav});
-  if(navHistory.length>30) navHistory.shift();
-  const peak = Math.max(...navHistory.map(h=>h.v));
-  const dd = peak>0?((peak-nav)/peak*100):0;
-  document.getElementById('dd-badge').textContent = `Peak: $${fmt(peak)} | Current DD: ${fmt(dd,2)}%`;
-  document.getElementById('dd-badge').style.color = dd>10?'var(--red)':dd>5?'var(--gold)':'var(--green)';
-  document.getElementById('lc-dd-used').textContent = fmt(dd,2)+'%';
-  document.getElementById('lc-dd-used').style.color = dd>10?'var(--red)':dd>5?'var(--gold)':'var(--text)';
-  document.getElementById('lc-peak').textContent = '$'+fmt(peak);
-  const ddBar = document.getElementById('lc-dd-bar');
-  ddBar.style.width = Math.min(100,dd/20*100)+'%';
-  ddBar.style.background = dd>10?'var(--red)':dd>5?'var(--gold)':'var(--green)';
-  const ddBadge = document.getElementById('lc-dd-badge');
-  ddBadge.textContent = dd>10?'DANGER':dd>5?'WARNING':'OK';
-  ddBadge.className = `limit-badge ${dd>10?'danger':dd>5?'warn':'ok'}`;
-  document.getElementById('lc-drawdown').className = `limit-card ${dd>10?'danger':dd>5?'warn':'ok'}`;
-  ddChart = new Chart(ctx,{type:'line',data:{labels:navHistory.map(h=>h.t),datasets:[{label:'NAV',data:navHistory.map(h=>h.v),borderColor:'#388bfd',backgroundColor:'rgba(56,139,253,0.07)',borderWidth:2,fill:true,tension:.4,pointRadius:navHistory.length<10?3:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7d8590',font:{family:'IBM Plex Mono',size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7d8590',font:{family:'IBM Plex Mono',size:10},callback:v=>'$'+v}}}}});
+  if(navHistory.length>30)navHistory.shift();
+  const peak=Math.max(...navHistory.map(h=>h.v));
+  const dd=peak>0?(peak-nav)/peak*100:0;
+  document.getElementById('dd-badge').textContent=`Peak: $${fmt(peak)} | Current DD: ${fmt(dd,2)}%`;
+  document.getElementById('dd-badge').style.color=dd>10?'var(--red)':dd>5?'var(--gold)':'var(--green)';
+  document.getElementById('lc-dd-used').textContent=fmt(dd,2)+'%';
+  document.getElementById('lc-dd-used').style.color=dd>10?'var(--red)':dd>5?'var(--gold)':'var(--text)';
+  document.getElementById('lc-peak').textContent='$'+fmt(peak);
+  const ddBar=document.getElementById('lc-dd-bar');
+  ddBar.style.width=Math.min(100,dd/20*100)+'%';ddBar.style.background=dd>10?'var(--red)':dd>5?'var(--gold)':'var(--green)';
+  const ddBadge=document.getElementById('lc-dd-badge');
+  ddBadge.textContent=dd>10?'DANGER':dd>5?'WARNING':'OK';ddBadge.className=`limit-badge ${dd>10?'danger':dd>5?'warn':'ok'}`;
+  document.getElementById('lc-drawdown').className=`limit-card ${dd>10?'danger':dd>5?'warn':'ok'}`;
+  ddChart=new Chart(ctx,{type:'line',data:{labels:navHistory.map(h=>h.t),datasets:[{label:'NAV',data:navHistory.map(h=>h.v),borderColor:'#388bfd',backgroundColor:'rgba(56,139,253,0.07)',borderWidth:2,fill:true,tension:.4,pointRadius:navHistory.length<10?3:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7d8590',font:{family:'IBM Plex Mono',size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7d8590',font:{family:'IBM Plex Mono',size:10},callback:v=>'$'+v}}}}});
 }
 
 async function loadAll(){
   try{
-    const [accR, trR, prR] = await Promise.all([
-      fetch(`${API}/api/account`),
-      fetch(`${API}/api/trades`),
-      fetch(`${API}/api/prices`),
-    ]);
-    const accD = await accR.json();
-    const trD  = await trR.json();
-    const prD  = await prR.json();
-
-    if(!accD.ok) return;
-    const acc = accD.account;
-    const pnl = accD.pnl;
-    const bal  = parseFloat(acc.balance||0);
-    const nav  = parseFloat(acc.NAV||acc.nav||0);
-    const upl  = parseFloat(acc.unrealizedPL||0);
-    const mar  = parseFloat(acc.marginAvailable||0);
-    const mused= parseFloat(acc.marginUsed||0);
-    const marPct = nav>0?mar/nav*100:0;
-    const musedPct = bal>0?mused/bal*100:0;
-    const openCount = parseInt(acc.openTradeCount||0);
-    const todayLoss = Math.abs(Math.min(0, parseFloat(pnl.total_pnl||0)));
-    const dailyLimit = bal*0.05;
-    const weeklyLimit = bal*0.10;
-
-    document.getElementById('nav-bal').textContent = '$'+fmt(bal);
-    document.getElementById('m-balance').textContent = '$'+fmt(bal);
-    document.getElementById('m-nav').textContent = '$'+fmt(nav);
-    document.getElementById('m-upl').textContent = 'Unrealized: '+(upl>=0?'+':'')+'$'+fmt(upl);
-    document.getElementById('m-upl').style.color = upl>=0?'var(--green)':'var(--red)';
-    document.getElementById('m-mar').textContent = '$'+fmt(mar);
-    document.getElementById('m-mar').style.color = marPct<10?'var(--red)':marPct<20?'var(--gold)':'var(--green)';
-    document.getElementById('m-mar-pct').textContent = fmt(marPct,1)+'% of NAV';
-    document.getElementById('m-mar-bar').style.width = Math.min(100,marPct)+'%';
-    document.getElementById('m-mar-bar').style.background = marPct<10?'var(--red)':marPct<20?'var(--gold)':'var(--green)';
-    document.getElementById('m-mused').textContent = '$'+fmt(mused);
-    document.getElementById('m-mused-pct').textContent = fmt(musedPct,1)+'% of balance';
-    document.getElementById('m-mused-bar').style.width = Math.min(100,musedPct)+'%';
-    document.getElementById('m-trades').textContent = openCount+'/3';
-    document.getElementById('m-trades-bar').style.width = (openCount/3*100)+'%';
-    document.getElementById('m-trades-bar').style.background = openCount>=3?'var(--red)':'var(--gold)';
-    const pnlEl = document.getElementById('m-pnl');
-    pnlEl.textContent = (pnl.total_pnl>=0?'+':'')+'$'+fmt(pnl.total_pnl||0);
-    pnlEl.style.color = pnl.total_pnl>=0?'var(--green)':'var(--red)';
-    document.getElementById('m-pnl-sub').textContent = pnl.trade_count+' trades today Â· '+pnl.win_rate+'% win';
-
-    // Circuit breaker
-    const limitBreached = todayLoss >= dailyLimit;
-    const cb = document.getElementById('circuit-breaker');
-    cb.className = 'circuit-breaker'+(limitBreached?' active':'');
-    if(limitBreached){
-      document.getElementById('cb-meta').textContent =
-        `Today's loss: $${fmt(todayLoss)} | Limit: $${fmt(dailyLimit)} (5%) | Resets at midnight UTC`;
-    }
-
-    // Limit cards
-    setLimitCard('daily', todayLoss, dailyLimit, `Today -$${fmt(todayLoss)}`, `Limit: 5% = $${fmt(dailyLimit)}`);
-    setLimitCard('weekly', todayLoss*1.5, weeklyLimit, 'This week', `Limit: 10% = $${fmt(weeklyLimit)}`);
-
-    // Health score
-    let score = 100;
-    if(marPct<5)  score-=40;  else if(marPct<10) score-=20; else if(marPct<20) score-=10;
-    if(openCount>3) score-=20; else if(openCount===3) score-=5;
-    const lossRatio = todayLoss/dailyLimit;
-    if(lossRatio>1) score-=30; else if(lossRatio>0.7) score-=15; else if(lossRatio>0.4) score-=8;
-    if(upl<-bal*0.1) score-=15; else if(upl<0) score-=5;
+    const [accR,trR,prR]=await Promise.all([fetch(`${API}/api/account`),fetch(`${API}/api/trades`),fetch(`${API}/api/prices`)]);
+    const accD=await accR.json(),trD=await trR.json(),prD=await prR.json();
+    if(!accD.ok)return;
+    const acc=accD.account,pnl=accD.pnl;
+    const bal=parseFloat(acc.balance||0),nav=parseFloat(acc.NAV||acc.nav||0);
+    const upl=parseFloat(acc.unrealizedPL||0),mar=parseFloat(acc.marginAvailable||0);
+    const mused=parseFloat(acc.marginUsed||0),marPct=nav>0?mar/nav*100:0;
+    const musedPct=bal>0?mused/bal*100:0,openCount=parseInt(acc.openTradeCount||0);
+    const todayLoss=Math.abs(Math.min(0,parseFloat(pnl.total_pnl||0)));
+    const dailyLimit=bal*0.05,weeklyLimit=bal*0.10;
+    document.getElementById('nav-bal').textContent='$'+fmt(bal);
+    document.getElementById('m-balance').textContent='$'+fmt(bal);
+    document.getElementById('m-nav').textContent='$'+fmt(nav);
+    document.getElementById('m-upl').textContent='Unrealized: '+(upl>=0?'+':'')+'$'+fmt(upl);
+    document.getElementById('m-upl').style.color=upl>=0?'var(--green)':'var(--red)';
+    document.getElementById('m-mar').textContent='$'+fmt(mar);
+    document.getElementById('m-mar').style.color=marPct<10?'var(--red)':marPct<20?'var(--gold)':'var(--green)';
+    document.getElementById('m-mar-pct').textContent=fmt(marPct,1)+'% of NAV';
+    document.getElementById('m-mar-bar').style.width=Math.min(100,marPct)+'%';
+    document.getElementById('m-mar-bar').style.background=marPct<10?'var(--red)':marPct<20?'var(--gold)':'var(--green)';
+    document.getElementById('m-mused').textContent='$'+fmt(mused);
+    document.getElementById('m-mused-pct').textContent=fmt(musedPct,1)+'% of balance';
+    document.getElementById('m-mused-bar').style.width=Math.min(100,musedPct)+'%';
+    document.getElementById('m-trades').textContent=openCount+'/3';
+    document.getElementById('m-trades-bar').style.width=(openCount/3*100)+'%';
+    document.getElementById('m-trades-bar').style.background=openCount>=3?'var(--red)':'var(--gold)';
+    const pnlEl=document.getElementById('m-pnl');
+    pnlEl.textContent=(pnl.total_pnl>=0?'+':'')+'$'+fmt(pnl.total_pnl||0);
+    pnlEl.style.color=pnl.total_pnl>=0?'var(--green)':'var(--red)';
+    document.getElementById('m-pnl-sub').textContent=pnl.trade_count+' trades today - '+pnl.win_rate+'% win';
+    const limitBreached=todayLoss>=dailyLimit;
+    const cb=document.getElementById('circuit-breaker');
+    cb.className='circuit-breaker'+(limitBreached?' active':'');
+    if(limitBreached)document.getElementById('cb-meta').textContent=`Today's loss: $${fmt(todayLoss)} | Limit: $${fmt(dailyLimit)} (5%) | Resets at midnight UTC`;
+    setLimitCard('daily',todayLoss,dailyLimit,`Limit: 5% = $${fmt(dailyLimit)}`);
+    setLimitCard('weekly',todayLoss*1.5,weeklyLimit,`Limit: 10% = $${fmt(weeklyLimit)}`);
+    let score=100;
+    if(marPct<5)score-=40;else if(marPct<10)score-=20;else if(marPct<20)score-=10;
+    if(openCount>3)score-=20;else if(openCount===3)score-=5;
+    const lossRatio=todayLoss/dailyLimit;
+    if(lossRatio>1)score-=30;else if(lossRatio>0.7)score-=15;else if(lossRatio>0.4)score-=8;
+    if(upl<-bal*0.1)score-=15;else if(upl<0)score-=5;
     updateGauge(Math.max(0,Math.min(100,score)));
-    document.getElementById('health-detail').textContent =
-      `Margin: ${fmt(marPct,1)}% Â· ${openCount}/3 trades Â· Daily loss: ${fmt(lossRatio*100,1)}% of limit`;
-
-    // Open instruments for correlation
-    const openInstruments = trD.ok ? trD.trades.map(t=>t.instrument||'') : [];
-    const corrWarnings = renderCorrelation(openInstruments);
-
-    // Rules checklist
-    renderRulesChecklist(acc, pnl, openCount, corrWarnings);
-
-    // Sizing table
-    if(prD.ok) renderSizingTable(acc, prD.prices);
-
-    // Drawdown chart
+    document.getElementById('health-detail').textContent=`Margin: ${fmt(marPct,1)}% - ${openCount}/3 trades - Daily loss: ${fmt(lossRatio*100,1)}% of limit`;
+    const openInstruments=trD.ok?trD.trades.map(t=>t.instrument||''):[];
+    const corrWarnings=renderCorrelation(openInstruments);
+    renderRulesChecklist(acc,pnl,openCount,corrWarnings);
+    if(prD.ok)renderSizingTable(acc,prD.prices);
     renderDdChart(nav);
-
   }catch(e){console.error(e);}
 }
-
 loadAll();
-setInterval(loadAll, 30000);
+setInterval(loadAll,30000);
 </script>
 </body>
 </html>
-
