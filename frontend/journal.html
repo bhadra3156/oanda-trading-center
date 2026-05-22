@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Journal — Oanda Trading Center</title>
+<title>Journal â€” Oanda Trading Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -128,38 +128,38 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <a href="risk.html" class="nav-link">Risk</a>
   </div>
   <div class="nav-right">
-    <div class="nav-bal">Balance: <span id="nav-bal">—</span></div>
+    <div class="nav-bal">Balance: <span id="nav-bal">â€”</span></div>
     <div class="env-badge">LIVE</div>
   </div>
 </nav>
 <div class="main">
   <div class="page-hdr">
     <div>
-      <div class="page-title">📓 Trade Journal & Analytics</div>
-      <div class="page-sub">Performance tracking · Win rate · Profit factor · Expectancy · AI debrief</div>
+      <div class="page-title">ðŸ““ Trade Journal & Analytics</div>
+      <div class="page-sub">Performance tracking Â· Win rate Â· Profit factor Â· Expectancy Â· AI debrief</div>
     </div>
-    <button class="ai-debrief-btn" onclick="getAiDebrief()" id="debrief-btn">🤖 Get AI Performance Debrief</button>
+    <button class="ai-debrief-btn" onclick="getAiDebrief()" id="debrief-btn">ðŸ¤– Get AI Performance Debrief</button>
   </div>
 
   <!-- AI DEBRIEF BOX -->
   <div class="ai-box" id="ai-debrief-box">
     <div class="ai-box-hdr">
-      <span class="ai-box-title">🤖 Gemini AI Performance Coach</span>
-      <span id="debrief-close" style="cursor:pointer;color:var(--muted);font-size:18px" onclick="document.getElementById('ai-debrief-box').classList.remove('show')">×</span>
+      <span class="ai-box-title">ðŸ¤– Gemini AI Performance Coach</span>
+      <span id="debrief-close" style="cursor:pointer;color:var(--muted);font-size:18px" onclick="document.getElementById('ai-debrief-box').classList.remove('show')">Ã—</span>
     </div>
     <div class="ai-box-content" id="ai-debrief-content">Analysing your trade history...</div>
   </div>
 
   <!-- 8 STAT CARDS -->
   <div class="stats-row">
-    <div class="stat-card b"><div class="stat-lbl">Total Signals</div><div class="stat-val b" id="s-total">—</div><div class="stat-sub">All time</div></div>
-    <div class="stat-card g"><div class="stat-lbl">Win Rate</div><div class="stat-val" id="s-wr">—</div><div class="stat-sub" id="s-wl">—W / —L</div></div>
-    <div class="stat-card gold"><div class="stat-lbl">Total P&L</div><div class="stat-val" id="s-pnl">—</div><div class="stat-sub">Realised</div></div>
-    <div class="stat-card orange"><div class="stat-lbl">Profit Factor</div><div class="stat-val" id="s-pf">—</div><div class="stat-sub">Gross P / Gross L</div></div>
-    <div class="stat-card p"><div class="stat-lbl">Avg Win</div><div class="stat-val p" id="s-avgwin">—</div><div class="stat-sub">Per winning trade</div></div>
-    <div class="stat-card r"><div class="stat-lbl">Avg Loss</div><div class="stat-val r" id="s-avgloss">—</div><div class="stat-sub">Per losing trade</div></div>
-    <div class="stat-card c"><div class="stat-lbl">Expectancy</div><div class="stat-val c" id="s-exp">—</div><div class="stat-sub">Per trade avg</div></div>
-    <div class="stat-card"><div class="stat-lbl">Best Instrument</div><div class="stat-val gold" id="s-best">—</div><div class="stat-sub" id="s-best-sub">By profit factor</div></div>
+    <div class="stat-card b"><div class="stat-lbl">Total Signals</div><div class="stat-val b" id="s-total">â€”</div><div class="stat-sub">All time</div></div>
+    <div class="stat-card g"><div class="stat-lbl">Win Rate</div><div class="stat-val" id="s-wr">â€”</div><div class="stat-sub" id="s-wl">â€”W / â€”L</div></div>
+    <div class="stat-card gold"><div class="stat-lbl">Total P&L</div><div class="stat-val" id="s-pnl">â€”</div><div class="stat-sub">Realised</div></div>
+    <div class="stat-card orange"><div class="stat-lbl">Profit Factor</div><div class="stat-val" id="s-pf">â€”</div><div class="stat-sub">Gross P / Gross L</div></div>
+    <div class="stat-card p"><div class="stat-lbl">Avg Win</div><div class="stat-val p" id="s-avgwin">â€”</div><div class="stat-sub">Per winning trade</div></div>
+    <div class="stat-card r"><div class="stat-lbl">Avg Loss</div><div class="stat-val r" id="s-avgloss">â€”</div><div class="stat-sub">Per losing trade</div></div>
+    <div class="stat-card c"><div class="stat-lbl">Expectancy</div><div class="stat-val c" id="s-exp">â€”</div><div class="stat-sub">Per trade avg</div></div>
+    <div class="stat-card"><div class="stat-lbl">Best Instrument</div><div class="stat-val gold" id="s-best">â€”</div><div class="stat-sub" id="s-best-sub">By profit factor</div></div>
   </div>
 
   <!-- P&L CHART + INSTRUMENT BARS -->
@@ -167,7 +167,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="chart-card">
       <div class="chart-hdr">
         <span class="chart-title">Cumulative P&L Over Time</span>
-        <span class="chart-badge b" id="pnl-badge">—</span>
+        <span class="chart-badge b" id="pnl-badge">â€”</span>
       </div>
       <div class="chart-body"><div style="position:relative;height:220px"><canvas id="pnl-chart"></canvas></div></div>
     </div>
@@ -188,7 +188,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="chart-card">
       <div class="chart-hdr">
         <span class="chart-title">Win / Loss Distribution</span>
-        <span class="chart-badge g" id="wl-badge">—</span>
+        <span class="chart-badge g" id="wl-badge">â€”</span>
       </div>
       <div class="chart-body">
         <div style="position:relative;height:160px;display:flex;align-items:center;justify-content:center"><canvas id="wl-chart"></canvas></div>
@@ -204,9 +204,9 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="chart-body">
         <div class="heatmap-grid" id="heatmap"></div>
         <div style="display:flex;justify-content:space-between;margin-top:8px">
-          <span style="font-size:9px;color:var(--muted);font-family:var(--mono)">🔴 Loss</span>
-          <span style="font-size:9px;color:var(--muted);font-family:var(--mono)">🟡 Neutral</span>
-          <span style="font-size:9px;color:var(--muted);font-family:var(--mono)">🟢 Profit</span>
+          <span style="font-size:9px;color:var(--muted);font-family:var(--mono)">ðŸ”´ Loss</span>
+          <span style="font-size:9px;color:var(--muted);font-family:var(--mono)">ðŸŸ¡ Neutral</span>
+          <span style="font-size:9px;color:var(--muted);font-family:var(--mono)">ðŸŸ¢ Profit</span>
         </div>
       </div>
     </div>
@@ -228,8 +228,8 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <!-- SIGNAL LOG TABLE -->
   <div class="table-card">
     <div class="table-hdr">
-      <span class="table-title">📋 Signal Log</span>
-      <span style="font-size:11px;font-family:var(--mono);color:var(--muted)" id="log-count">—</span>
+      <span class="table-title">ðŸ“‹ Signal Log</span>
+      <span style="font-size:11px;font-family:var(--mono);color:var(--muted)" id="log-count">â€”</span>
     </div>
     <div class="filter-bar">
       <button class="filter-btn active" onclick="filterTrades('all',this)">All</button>
@@ -242,12 +242,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th onclick="sortTable('date')">Date ↕</th>
-          <th onclick="sortTable('inst')">Instrument ↕</th>
+          <th onclick="sortTable('date')">Date â†•</th>
+          <th onclick="sortTable('inst')">Instrument â†•</th>
           <th>Signal</th><th>TF</th>
           <th>Entry</th><th>SL</th><th>TP</th>
           <th>Confidence</th><th>Outcome</th>
-          <th onclick="sortTable('pnl')">P&L ↕</th>
+          <th onclick="sortTable('pnl')">P&L â†•</th>
           <th>Reasons</th>
         </tr></thead>
         <tbody id="trade-log">
@@ -268,7 +268,7 @@ let pnlChart=null, wlChart=null, confChart=null;
 
 function fmt(n,d=2){return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}
 function fmtP(inst,p){
-  if(!p&&p!==0)return '—';p=Number(p);
+  if(!p&&p!==0)return 'â€”';p=Number(p);
   if(!inst)return p.toFixed(5);
   if(inst.includes('JPY'))return p.toFixed(3);
   if(inst.includes('XAU')||inst.includes('WTICO'))return p.toFixed(2);
@@ -300,17 +300,17 @@ function renderStats(stats, trades){
   const exp=wins+losses>0?((wr/100)*avgWin-(1-wr/100)*avgLoss):0;
 
   const pfEl=document.getElementById('s-pf');
-  pfEl.textContent=pf>=999?'∞':fmt(pf,2);
+  pfEl.textContent=pf>=999?'âˆž':fmt(pf,2);
   pfEl.className='stat-val '+(pf>=1.5?'orange':pf>=1.0?'gold':'r');
-  document.getElementById('s-avgwin').textContent=avgWin>0?'+$'+fmt(avgWin):'—';
-  document.getElementById('s-avgloss').textContent=avgLoss>0?'-$'+fmt(avgLoss):'—';
+  document.getElementById('s-avgwin').textContent=avgWin>0?'+$'+fmt(avgWin):'â€”';
+  document.getElementById('s-avgloss').textContent=avgLoss>0?'-$'+fmt(avgLoss):'â€”';
   const expEl=document.getElementById('s-exp');
   expEl.textContent=(exp>=0?'+':'')+'$'+fmt(exp);
   expEl.className='stat-val '+(exp>=0?'c':'r');
 
   // Best instrument
   const byInst=stats.by_instrument||{};
-  let bestInst='—', bestPf=0;
+  let bestInst='â€”', bestPf=0;
   Object.entries(byInst).forEach(([inst,d])=>{
     const total=d.wins+d.losses;
     if(total>=2){
@@ -321,14 +321,14 @@ function renderStats(stats, trades){
     }
   });
   document.getElementById('s-best').textContent=bestInst;
-  document.getElementById('s-best-sub').textContent=bestInst!=='—'?'PF: '+fmt(bestPf,2):'Need more data';
+  document.getElementById('s-best-sub').textContent=bestInst!=='â€”'?'PF: '+fmt(bestPf,2):'Need more data';
 }
 
 function renderWinrateRows(byInst){
   const el=document.getElementById('wr-rows');
   const entries=Object.entries(byInst||{});
   if(!entries.length){
-    el.innerHTML='<div style="color:var(--muted);font-family:var(--mono);font-size:12px">No closed trades yet — trade signals are logged automatically on every dashboard scan</div>';
+    el.innerHTML='<div style="color:var(--muted);font-family:var(--mono);font-size:12px">No closed trades yet â€” trade signals are logged automatically on every dashboard scan</div>';
     return;
   }
   entries.sort((a,b)=>(b[1].wins+b[1].losses)-(a[1].wins+a[1].losses));
@@ -384,24 +384,24 @@ function renderLeaderboard(byInst){
       <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${isTop?'var(--green)':'var(--red)'};margin-bottom:8px">${title}</div>
       ${items.map((e,i)=>`
         <div class="lb-row">
-          <div class="lb-rank ${isTop?'top':'bot'}">${isTop?'#'+(i+1):'↓'+(i+1)}</div>
+          <div class="lb-rank ${isTop?'top':'bot'}">${isTop?'#'+(i+1):'â†“'+(i+1)}</div>
           <div class="lb-inst">${e.inst.replace('_','/')}</div>
           <div class="lb-bar-wrap"><div class="lb-bar" style="width:${Math.min(100,e.pf/3*100)}%;background:${isTop?'var(--green)':'var(--red)'}"></div></div>
-          <div class="lb-pf" style="color:${e.pf>=1.5?'var(--cyan)':e.pf>=1?'var(--gold)':'var(--red)'}">PF: ${e.pf>=99?'∞':fmt(e.pf,2)}</div>
+          <div class="lb-pf" style="color:${e.pf>=1.5?'var(--cyan)':e.pf>=1?'var(--gold)':'var(--red)'}">PF: ${e.pf>=99?'âˆž':fmt(e.pf,2)}</div>
           <div class="lb-wr">${Math.round(e.wr)}%</div>
           <div class="lb-pnl" style="color:${e.pnl>=0?'var(--green)':'var(--red)'}">${e.pnl>=0?'+':''}$${fmt(e.pnl)}</div>
         </div>`).join('')}
     </div>`;
 
   el.innerHTML=`
-    ${makeSection('🏆 Top Performers',top,true)}
-    ${bot.length?makeSection('⚠ Weakest Instruments',bot,false):''}
+    ${makeSection('ðŸ† Top Performers',top,true)}
+    ${bot.length?makeSection('âš  Weakest Instruments',bot,false):''}
     <div>
-      <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Focus List — Build Edge Here</div>
+      <div style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Focus List â€” Build Edge Here</div>
       ${top.slice(0,3).map(e=>`
         <div style="padding:8px 10px;border-radius:7px;background:rgba(63,185,80,0.05);border:1px solid rgba(63,185,80,0.1);margin-bottom:6px">
           <div style="font-size:11px;font-weight:700;font-family:var(--mono);color:var(--gold)">${e.inst.replace('_','/')}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:3px">Win rate: ${Math.round(e.wr)}% · ${e.wins}W/${e.losses}L · PF: ${e.pf>=99?'∞':fmt(e.pf,2)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">Win rate: ${Math.round(e.wr)}% Â· ${e.wins}W/${e.losses}L Â· PF: ${e.pf>=99?'âˆž':fmt(e.pf,2)}</div>
         </div>`).join('')}
     </div>`;
 }
@@ -429,7 +429,7 @@ function renderHeatmap(trades){
     if(v>0)bg=`rgba(63,185,80,${0.1+intensity*0.7})`;
     else if(v<0)bg=`rgba(248,81,73,${0.1+intensity*0.7})`;
     else bg='rgba(255,255,255,0.04)';
-    return `<div><div class="hm-cell" style="background:${bg}" title="${h}:00 UTC — ${n} trades — ${v>=0?'+':''}$${fmt(v)}">${h}</div><div class="hm-label">${v!==0?(v>=0?'▲':'▼'):''}</div></div>`;
+    return `<div><div class="hm-cell" style="background:${bg}" title="${h}:00 UTC â€” ${n} trades â€” ${v>=0?'+':''}$${fmt(v)}">${h}</div><div class="hm-label">${v!==0?(v>=0?'â–²':'â–¼'):''}</div></div>`;
   }).join('');
 }
 
@@ -455,7 +455,7 @@ function renderWlChart(wins,losses){
   if(wlChart)wlChart.destroy();
   const total=wins+losses;
   const badge=document.getElementById('wl-badge');
-  badge.textContent=total>0?Math.round(wins/total*100)+'% win':'—';
+  badge.textContent=total>0?Math.round(wins/total*100)+'% win':'â€”';
   badge.className='chart-badge '+(total>0&&wins/total>=0.5?'g':'r');
   if(!total){document.getElementById('wl-legend').innerHTML='<span style="color:var(--muted)">No closed trades yet</span>';return;}
   wlChart=new Chart(ctx,{type:'doughnut',data:{labels:['Wins','Losses'],datasets:[{data:[wins,losses],backgroundColor:['rgba(63,185,80,0.8)','rgba(248,81,73,0.8)'],borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false}}}});
@@ -477,7 +477,7 @@ function renderTable(trades){
   const tbody=document.getElementById('trade-log');
   document.getElementById('log-count').textContent=trades.length+' signals';
   if(!trades.length){
-    tbody.innerHTML=`<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">No signals logged yet</div><div class="empty-sub">Signals log automatically when the dashboard scans.<br>Open the Dashboard and wait for the first scan.</div><a href="index.html" class="empty-link">→ Open Dashboard</a></div></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">ðŸ“Š</div><div class="empty-title">No signals logged yet</div><div class="empty-sub">Signals log automatically when the dashboard scans.<br>Open the Dashboard and wait for the first scan.</div><a href="index.html" class="empty-link">â†’ Open Dashboard</a></div></td></tr>`;
     return;
   }
   tbody.innerHTML=trades.map(t=>{
@@ -491,21 +491,21 @@ function renderTable(trades){
     const tp=parseFloat(t.TP||t.take_profit||t.tp||0);
     const tf=t.Timeframe||t.timeframe||'H4';
     const reasons=t.Reasons||t.reasons||'';
-    const date=String(t.Date||t.date||t.created_at||'—').substring(0,16);
+    const date=String(t.Date||t.date||t.created_at||'â€”').substring(0,16);
     const outCls=out==='WIN'?'win':out==='LOSS'?'loss':'open';
     const confColor=conf>=70?'var(--green)':conf>=50?'var(--gold)':'var(--muted)';
     return `<tr>
       <td style="color:var(--muted);white-space:nowrap">${date}</td>
       <td class="td-inst">${inst.replace('_','/')}</td>
-      <td><span class="td-dir ${sig==='BUY'?'long':'short'}">${sig==='BUY'?'▲ BUY':'▼ SELL'}</span></td>
+      <td><span class="td-dir ${sig==='BUY'?'long':'short'}">${sig==='BUY'?'â–² BUY':'â–¼ SELL'}</span></td>
       <td style="color:var(--muted)">${tf}</td>
       <td>${fmtP(inst,entry)}</td>
       <td style="color:var(--red)">${fmtP(inst,sl)}</td>
       <td style="color:var(--green)">${fmtP(inst,tp)}</td>
-      <td style="color:${confColor};font-weight:700">${conf>0?conf+'%':'—'}</td>
+      <td style="color:${confColor};font-weight:700">${conf>0?conf+'%':'â€”'}</td>
       <td><span class="td-outcome ${outCls}">${out||'Open'}</span></td>
-      <td class="${pnl>0?'td-pos':pnl<0?'td-neg':''}">${out?(pnl>=0?'+':'')+'$'+fmt(pnl):'—'}</td>
-      <td style="color:var(--muted);font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${reasons}">${String(reasons).substring(0,55)||'—'}</td>
+      <td class="${pnl>0?'td-pos':pnl<0?'td-neg':''}">${out?(pnl>=0?'+':'')+'$'+fmt(pnl):'â€”'}</td>
+      <td style="color:var(--muted);font-size:10px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${reasons}">${String(reasons).substring(0,55)||'â€”'}</td>
     </tr>`;
   }).join('');
 }
@@ -548,7 +548,7 @@ async function getAiDebrief(){
   try{
     const recent=allTrades.slice(0,20);
     const summary=recent.map(t=>`${t.Date||t.date||''} | ${t.Instrument||t.instrument||''} | ${t.Signal||t.signal||''} | Conf:${t.Confidence||t.confidence||0}% | ${t.Outcome||t.outcome||'Open'} | PnL:${t.PnL||t.pnl||0}`).join('\n');
-    const prompt=`You are a professional trading coach analysing a trader's recent 20 trades.\n\nTrade History:\n${summary||'No closed trades yet — only open signals'}\n\nProvide a structured debrief covering:\n1. STRENGTHS: What patterns are working well?\n2. WEAKNESSES: What habits are costing money?\n3. BEST SETUP: Which conditions produce the best results?\n4. STOP DOING: One specific thing to eliminate immediately\n5. DO MORE: One specific thing to do more of\n6. SCORE: Rate the overall trading discipline 1-10\n\nBe direct, specific and actionable. Max 200 words.`;
+    const prompt=`You are a professional trading coach analysing a trader's recent 20 trades.\n\nTrade History:\n${summary||'No closed trades yet â€” only open signals'}\n\nProvide a structured debrief covering:\n1. STRENGTHS: What patterns are working well?\n2. WEAKNESSES: What habits are costing money?\n3. BEST SETUP: Which conditions produce the best results?\n4. STOP DOING: One specific thing to eliminate immediately\n5. DO MORE: One specific thing to do more of\n6. SCORE: Rate the overall trading discipline 1-10\n\nBe direct, specific and actionable. Max 200 words.`;
     const geminiKey=await fetch(`${API}/api/account`).then(r=>r.json()).then(()=>'').catch(()=>'');
     const res=await fetch(`${API}/api/ai-debrief`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({trades:recent,prompt})});
     if(res.ok){
@@ -560,12 +560,12 @@ async function getAiDebrief(){
       const losses=recent.filter(t=>(t.Outcome||t.outcome)==='LOSS').length;
       const open=recent.filter(t=>!(t.Outcome||t.outcome)).length;
       const wr=wins+losses>0?Math.round(wins/(wins+losses)*100):0;
-      content.textContent=`📊 LOCAL ANALYSIS (Gemini unavailable)\n\nLast ${recent.length} signals:\n• Wins: ${wins} | Losses: ${losses} | Open: ${open}\n• Win Rate: ${wr}%\n\n${wr>=55?'✅ Win rate above 55% — strategy is working':'⚠️ Win rate below 55% — review entry conditions'}\n\nTo get full AI coaching, make sure GEMINI_API_KEY is set in Render environment variables.`;
+      content.textContent=`ðŸ“Š LOCAL ANALYSIS (Gemini unavailable)\n\nLast ${recent.length} signals:\nâ€¢ Wins: ${wins} | Losses: ${losses} | Open: ${open}\nâ€¢ Win Rate: ${wr}%\n\n${wr>=55?'âœ… Win rate above 55% â€” strategy is working':'âš ï¸ Win rate below 55% â€” review entry conditions'}\n\nTo get full AI coaching, make sure GEMINI_API_KEY is set in Render environment variables.`;
     }
   }catch(e){
     content.textContent='Could not connect to AI service. Check that the Render server is running.';
   }finally{
-    btn.innerHTML='🤖 Get AI Performance Debrief';
+    btn.innerHTML='ðŸ¤– Get AI Performance Debrief';
     btn.disabled=false;
   }
 }
@@ -578,7 +578,7 @@ async function loadJournal(){
     const r=await fetch(`${API}/api/journal`);
     const d=await r.json();
     if(!d.ok){
-      document.getElementById('trade-log').innerHTML=`<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">Journal not available</div><div class="empty-sub">${d.error||'Check server logs'}</div></div></td></tr>`;
+      document.getElementById('trade-log').innerHTML=`<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">ðŸ“Š</div><div class="empty-title">Journal not available</div><div class="empty-sub">${d.error||'Check server logs'}</div></div></td></tr>`;
       return;
     }
     const stats=d.stats;
@@ -595,10 +595,11 @@ async function loadJournal(){
     renderTable(filteredTrades);
   }catch(e){
     console.error(e);
-    document.getElementById('trade-log').innerHTML=`<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-title">Connection error</div><div class="empty-sub">Could not connect to API. Make sure Render is running.</div></div></td></tr>`;
+    document.getElementById('trade-log').innerHTML=`<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">âš ï¸</div><div class="empty-title">Connection error</div><div class="empty-sub">Could not connect to API. Make sure Render is running.</div></div></td></tr>`;
   }
 }
 loadJournal();
 </script>
 </body>
 </html>
+
