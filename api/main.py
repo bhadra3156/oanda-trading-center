@@ -1,18 +1,15 @@
 """
 Oanda Trading Center — FastAPI Backend v2
-Runs on Render.com (free)
+8 instruments: GBP/JPY, EUR/USD, XAU/USD, SUGAR, WHEAT, SPX500, WTI, NATGAS
 """
-
-import os
-import logging
+import os, asyncio, logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from dotenv import load_dotenv
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 load_dotenv()
 
@@ -55,15 +52,19 @@ calc     = PositionCalculator(oanda)
 _alerted  = set()
 _executor = ThreadPoolExecutor(max_workers=8)
 
+# ── 8 instruments only ────────────────────────────────────────────────────────
 INSTRUMENTS = [
-    "EUR_USD", "GBP_JPY", "XAU_USD", "XAG_USD", "XPD_USD",
-    "NATGAS_USD", "WTICO_USD", "CORN_USD", "SUGAR_USD",
-    "WHEAT_USD", "SOYBN_USD", "SPX500_USD", "NAS100_USD",
-    "UK100_GBP", "DE30_EUR"
+    "GBP_JPY",
+    "EUR_USD",
+    "XAU_USD",
+    "SUGAR_USD",
+    "WHEAT_USD",
+    "SPX500_USD",
+    "WTICO_USD",
+    "NATGAS_USD",
 ]
 
-
-# ── PYDANTIC MODELS ───────────────────────────────────────────────────────────
+# ── MODELS ────────────────────────────────────────────────────────────────────
 class OrderRequest(BaseModel):
     instrument:  str
     direction:   str
@@ -78,6 +79,11 @@ class CalculatorRequest(BaseModel):
 
 class CloseRequest(BaseModel):
     trade_id: str
+    units:    Optional[int] = None  # None = full close, int = partial close
+
+class ModifySlRequest(BaseModel):
+    trade_id:     str
+    new_sl_price: float
 
 class OpenPosition(BaseModel):
     instrument: str
@@ -101,17 +107,18 @@ async def health():
     now  = datetime.utcnow()
     hour = now.hour
     if 7 <= hour < 16:
-        session, in_session = "London", True
+        session, in_session = "London",   True
     elif 13 <= hour < 21:
         session, in_session = "New York", True
     else:
-        session, in_session = "Asian", False
+        session, in_session = "Asian",    False
     return {
-        "status":     "ok",
-        "time":       now.isoformat() + "+00:00",
-        "version":    "2.0.0",
-        "session":    session,
-        "in_session": in_session,
+        "status":       "ok",
+        "time":         now.isoformat() + "+00:00",
+        "version":      "2.0.0",
+        "session":      session,
+        "in_session":   in_session,
+        "instruments":  len(INSTRUMENTS),
     }
 
 
@@ -146,7 +153,6 @@ async def get_trades():
         trades = oanda.get_open_trades()
         return {"ok": True, "trades": trades}
     except Exception as e:
-        logger.error(f"Trades error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -159,7 +165,7 @@ def _analyse_one(inst: str) -> dict:
         return {
             "instrument": inst, "signal": "ERROR",
             "error": str(e), "reasons": [str(e)],
-            "confidence": 0, "price": 0, "ai": None
+            "confidence": 0, "price": 0, "ai": None,
         }
 
     if sig.get("signal") in ("BUY", "SELL"):
@@ -171,15 +177,15 @@ def _analyse_one(inst: str) -> dict:
 
         try:
             db.save_signal(inst, sig)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Supabase signal save error: {e}")
 
-        alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
+        alert_key = f"{inst}_{sig['signal']}_{sig.get('price', '')}"
         if alert_key not in _alerted:
             try:
                 telegram.send_signal(inst, sig, sig.get("ai") or {})
                 _alerted.add(alert_key)
-                if len(_alerted) > 200:
+                if len(_alerted) > 100:
                     _alerted.clear()
             except Exception:
                 pass
@@ -193,8 +199,7 @@ def _analyse_one(inst: str) -> dict:
 @app.get("/api/signals")
 async def get_signals():
     try:
-        import asyncio
-        loop = asyncio.get_running_loop()
+        loop  = asyncio.get_running_loop()
         tasks = [
             loop.run_in_executor(_executor, _analyse_one, inst)
             for inst in INSTRUMENTS
@@ -207,14 +212,14 @@ async def get_signals():
                 results[inst] = {
                     "instrument": inst, "signal": "ERROR",
                     "error": str(result), "reasons": [str(result)],
-                    "confidence": 0, "price": 0, "ai": None
+                    "confidence": 0, "price": 0, "ai": None,
                 }
             else:
                 results[inst] = result
 
         return {"ok": True, "signals": results, "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
-        logger.error(f"Signals endpoint error: {e}")
+        logger.error(f"Signals error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -231,9 +236,11 @@ async def place_order(order: OrderRequest):
         )
         try:
             db.save_trade({
-                "instrument": order.instrument, "signal": order.direction,
-                "units": order.units, "stop_loss": order.stop_loss,
-                "take_profit": order.take_profit,
+                "instrument": order.instrument,
+                "signal":     order.direction,
+                "units":      order.units,
+                "stop_loss":  order.stop_loss,
+                "take_profit":order.take_profit,
             })
         except Exception:
             pass
@@ -242,7 +249,7 @@ async def place_order(order: OrderRequest):
             entry = price.get("ask" if order.direction == "BUY" else "bid", 0)
             telegram.send_trade_confirmation(
                 order.instrument, order.direction, entry,
-                order.stop_loss, order.take_profit, order.units
+                order.stop_loss, order.take_profit, order.units,
             )
         except Exception:
             pass
@@ -252,14 +259,28 @@ async def place_order(order: OrderRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ── CLOSE TRADE ───────────────────────────────────────────────────────────────
+# ── CLOSE TRADE (full or partial) ─────────────────────────────────────────────
 @app.post("/api/close-trade")
 async def close_trade(req: CloseRequest):
     try:
-        result = oanda.close_trade(req.trade_id)
+        if req.units is not None:
+            result = oanda.close_trade_partial(req.trade_id, req.units)
+        else:
+            result = oanda.close_trade(req.trade_id)
         return {"ok": True, "result": result}
     except Exception as e:
         logger.error(f"Close trade error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── MODIFY STOP LOSS ──────────────────────────────────────────────────────────
+@app.post("/api/modify-sl")
+async def modify_sl(req: ModifySlRequest):
+    try:
+        result = oanda.modify_trade_sl(req.trade_id, req.new_sl_price)
+        return {"ok": True, "result": result}
+    except Exception as e:
+        logger.error(f"Modify SL error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -269,6 +290,16 @@ async def calculate_position(req: CalculatorRequest):
     try:
         result = calc.calculate(req.instrument, req.direction, req.risk_percent)
         return {"ok": True, "calculation": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── CANDLES (for mini charts) ─────────────────────────────────────────────────
+@app.get("/api/candles/{instrument}")
+async def get_candles(instrument: str, granularity: str = "H4", count: int = 60):
+    try:
+        candles = oanda.get_candles(instrument, granularity=granularity, count=count)
+        return {"ok": True, "candles": candles, "instrument": instrument}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -292,18 +323,16 @@ async def get_news():
     except Exception as e:
         now   = datetime.utcnow()
         today = now.strftime("%Y-%m-%d")
-        fallback = [
-            {"title": "US Economic Data Window", "country": "USD", "impact": "High",
-             "date": f"{today} 13:30 UTC", "time_utc": f"{today} 13:30 UTC",
-             "in_blackout": False, "source": "fallback"},
-        ]
-        if now.weekday() == 2:
-            fallback.append({
-                "title": "EIA Oil Inventories", "country": "USD", "impact": "High",
-                "date": f"{today} 15:30 UTC", "time_utc": f"{today} 15:30 UTC",
-                "in_blackout": False, "source": "fallback",
-            })
-        return {"ok": True, "news": fallback, "error": str(e), "source": "fallback"}
+        return {
+            "ok":     True,
+            "news":   [
+                {"title": "US Economic Data", "country": "USD",
+                 "date": f"{today} 13:30 UTC", "time_utc": f"{today} 13:30 UTC",
+                 "impact": "High", "source": "fallback"},
+            ],
+            "error":  str(e),
+            "source": "fallback",
+        }
 
 
 # ── NEWS CHECK ────────────────────────────────────────────────────────────────
@@ -331,13 +360,12 @@ async def check_correlation_endpoint(request: CorrelationCheckRequest):
         open_positions=positions_dicts,
     )
 
-
 @app.get("/api/correlation-map/{instrument}")
 async def correlation_map_endpoint(instrument: str):
     if not CORRELATION_AVAILABLE:
         return {"instrument": instrument, "correlations": []}
     return {
-        "instrument": instrument,
+        "instrument":   instrument,
         "correlations": get_correlation_map_for_instrument(instrument),
     }
 
@@ -349,84 +377,6 @@ async def ai_debrief(req: DebriefRequest):
         analysis = gemini.analyse_debrief(req.prompt)
         return {"ok": True, "analysis": analysis}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ── FULL DASHBOARD (single call) ──────────────────────────────────────────────
-@app.get("/api/data")
-async def get_dashboard_data():
-    try:
-        import asyncio
-        summary     = oanda.get_account_summary()
-        open_trades = oanda.get_open_trades()
-        pnl         = oanda.get_daily_pnl()
-
-        open_positions_for_corr = [
-            {"instrument": t.get("instrument"),
-             "direction": "BUY" if float(t.get("currentUnits", 0)) > 0 else "SELL"}
-            for t in open_trades
-        ]
-
-        loop  = asyncio.get_running_loop()
-        tasks = [loop.run_in_executor(_executor, _analyse_one, inst) for inst in INSTRUMENTS]
-        results_list = await asyncio.gather(*tasks, return_exceptions=True)
-
-        sig_results, prices = {}, {}
-        for inst, result in zip(INSTRUMENTS, results_list):
-            sig = result if not isinstance(result, Exception) else {
-                "instrument": inst, "signal": "ERROR",
-                "error": str(result), "reasons": [str(result)],
-                "confidence": 0, "price": 0, "ai": None
-            }
-            if CORRELATION_AVAILABLE and sig.get("signal") in ("BUY", "SELL"):
-                try:
-                    sig["correlation"] = check_correlation(
-                        new_instrument=inst,
-                        new_direction=sig["signal"],
-                        open_positions=open_positions_for_corr,
-                    )
-                except Exception:
-                    sig["correlation"] = {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
-            else:
-                sig["correlation"] = {"safe": True, "warnings": [], "block_trade": False, "summary": ""}
-            sig_results[inst] = sig
-            try:
-                prices[inst] = oanda.get_live_price(inst)
-            except Exception:
-                pass
-
-        trades_data = [{
-            "id": t.get("id"), "instrument": t.get("instrument"),
-            "units": float(t.get("currentUnits", 0)), "entry": t.get("price"),
-            "pnl": float(t.get("unrealizedPL", 0)),
-            "sl": t.get("stopLossOrder", {}).get("price", "—"),
-            "tp": t.get("takeProfitOrder", {}).get("price", "—"),
-            "direction": "LONG" if float(t.get("currentUnits", 0)) > 0 else "SHORT",
-        } for t in open_trades]
-
-        try:
-            db.save_account_snapshot(summary)
-        except Exception:
-            pass
-
-        return {
-            "ok": True,
-            "timestamp": datetime.utcnow().isoformat(),
-            "environment": os.getenv("OANDA_ENVIRONMENT", "live").upper(),
-            "account": {
-                "balance":         float(summary.get("balance", 0)),
-                "nav":             float(summary.get("NAV", 0)),
-                "unrealizedPL":    float(summary.get("unrealizedPL", 0)),
-                "marginUsed":      float(summary.get("marginUsed", 0)),
-                "marginAvailable": float(summary.get("marginAvailable", 0)),
-                "openTradeCount":  int(summary.get("openTradeCount", 0)),
-                "currency":        summary.get("currency", "GBP"),
-            },
-            "pnl": pnl, "trades": trades_data,
-            "prices": prices, "signals": sig_results,
-        }
-    except Exception as e:
-        logger.error(f"Dashboard data error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
