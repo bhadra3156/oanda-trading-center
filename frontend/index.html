@@ -149,6 +149,17 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 
 /* SIZE ROW */
 .sc-size{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.sc-news{margin-top:6px;padding:6px 8px;border-radius:6px;border:1px solid;display:flex;flex-direction:column;gap:3px}
+.sc-news.urgent{background:rgba(248,81,73,0.06);border-color:rgba(248,81,73,0.2)}
+.sc-news.warn{background:rgba(210,153,34,0.06);border-color:rgba(210,153,34,0.15)}
+.sc-news.clear{background:rgba(63,185,80,0.04);border-color:rgba(63,185,80,0.12)}
+.sc-news-hdr{font-size:8px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:2px}
+.sc-news-hdr.urgent{color:var(--red)}.sc-news-hdr.warn{color:var(--gold)}.sc-news-hdr.clear{color:var(--green)}
+.sc-news-item{font-size:9px;font-family:var(--mono);display:flex;align-items:center;gap:5px}
+.sc-news-item.urgent{color:var(--red)}.sc-news-item.warn{color:var(--gold)}.sc-news-item.clear{color:var(--green)}
+.sc-news-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.sc-news-dot.urgent{background:var(--red)}.sc-news-dot.warn{background:var(--gold)}.sc-news-dot.clear{background:var(--green)}
+.sc-blackout{margin-top:6px;padding:6px 8px;background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.25);border-radius:6px;font-size:9px;color:var(--red);font-weight:600;text-align:center;letter-spacing:0.06em}
 .sc-size-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
 .sc-size-val{font-size:11px;font-weight:700;font-family:var(--mono);color:var(--gold)}
 
@@ -844,6 +855,56 @@ function renderSignals(signals, account){
 
     const reason=(s.reasons||[]).slice(0,2).join(' · ')||'Neutral &mdash; wait for setup';
 
+    // ── NEWS ON CARD ──────────────────────────────────────────────────────────
+    let newsHtml = '';
+    const upcoming = s.upcoming_events || [];
+    const inBlackout = s.news_blackout || false;
+
+    if (inBlackout) {
+      // Full blackout — red warning replaces news section
+      const evtName = s.news_event || 'High Impact News';
+      const evtTime = s.news_time  || '';
+      newsHtml = `<div class="sc-blackout">
+        [!] NEWS BLACKOUT — ${evtName}${evtTime?' @ '+evtTime:''} · No trades
+      </div>`;
+    } else if (upcoming.length > 0) {
+      // Show upcoming events with colour coding
+      const items = upcoming.slice(0, 3).map(ev => {
+        const mins = Math.round(ev.minutes_away || 0);
+        const hrs  = Math.floor(mins / 60);
+        const rem  = mins % 60;
+        const timeStr = hrs > 0
+          ? `in ${hrs}h ${rem}m`
+          : `in ${mins}m`;
+        const cls  = mins <= 120 ? 'urgent' : 'warn';
+        const icon = mins <= 120 ? '[!]' : '[i]';
+        return `<div class="sc-news-item ${cls}">
+          <div class="sc-news-dot ${cls}"></div>
+          ${icon} ${ev.title||''} (${ev.country||''}) ${timeStr}
+        </div>`;
+      }).join('');
+
+      // Determine overall severity
+      const minMins = Math.min(...upcoming.map(e=>e.minutes_away||9999));
+      const severity = minMins <= 120 ? 'urgent' : 'warn';
+      const hdrText  = minMins <= 120
+        ? 'HIGH IMPACT NEWS — Caution'
+        : 'Upcoming News — Next 24h';
+
+      newsHtml = `<div class="sc-news ${severity}">
+        <div class="sc-news-hdr ${severity}">${hdrText}</div>
+        ${items}
+      </div>`;
+    } else {
+      // No upcoming news — clean to trade
+      newsHtml = `<div class="sc-news clear">
+        <div class="sc-news-item clear">
+          <div class="sc-news-dot clear"></div>
+          No high-impact news — clear to trade
+        </div>
+      </div>`;
+    }
+
     return `<div class="scard ${cc}" style="animation-delay:${idx*0.04}s">
       <div class="sc-top">
         <div><div class="sc-pair">${inst.name}</div><div class="sc-cat">${inst.cat}</div></div>
@@ -866,6 +927,7 @@ function renderSignals(signals, account){
       ${aiHtml}
       <div class="sc-reason">${reason}</div>
       ${sizeHtml}
+      ${newsHtml}
       ${tradeHtml}
     </div>`;
   }).join('');
