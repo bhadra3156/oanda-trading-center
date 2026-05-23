@@ -106,6 +106,10 @@ class CorrelationCheckRequest(BaseModel):
     new_direction:  str
     open_positions: List[OpenPosition]
 
+class AIChatRequest(BaseModel):
+    message:  str
+    history:  list = []   # last N turns for context
+
 class DebriefRequest(BaseModel):
     trades: list
     prompt: str
@@ -693,6 +697,136 @@ async def run_backtest_endpoint(req: BacktestRequest):
         raise
     except Exception as e:
         logger.error(f"Backtest endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── AI CHAT ───────────────────────────────────────────────────────────────────
+@app.post("/api/ai-chat")
+async def ai_chat(req: AIChatRequest):
+    """
+    AI Chat Assistant with live trading context.
+    Answers questions about your positions, signals, risk, and market conditions.
+    Uses GROQ primary with Claude fallback (same as signal engine).
+    """
+    try:
+        # Gather live context
+        ctx = {}
+        try:
+            acc         = oanda.get_account_summary()
+            pnl         = oanda.get_daily_pnl()
+            open_trades = oanda.get_open_trades()
+            ctx["balance"]      = float(acc.get("balance", 0))
+            ctx["nav"]          = float(acc.get("NAV", 0))
+            ctx["margin_avail"] = float(acc.get("marginAvailable", 0))
+            ctx["open_trades"]  = len(open_trades)
+            ctx["daily_pnl"]    = pnl.get("daily_pnl", 0)
+            ctx["daily_loss"]   = pnl.get("daily_loss", 0)
+            ctx["daily_warning"]= pnl.get("daily_warning", False)
+            ctx["margin_warn"]  = pnl.get("margin_warning", False)
+            ctx["positions"]    = [
+                {
+                    "instrument": t.get("instrument","").replace("_","/"),
+                    "direction":  "LONG" if float(t.get("currentUnits",0))>0 else "SHORT",
+                    "units":      abs(float(t.get("currentUnits",0))),
+                    "entry":      t.get("price",""),
+                    "pnl":        float(t.get("unrealizedPL",0)),
+                    "sl":         t.get("stopLossOrder",{}).get("price","none"),
+                    "tp":         t.get("takeProfitOrder",{}).get("price","none"),
+                }
+                for t in open_trades
+            ]
+        except Exception as e:
+            logger.debug(f"AI chat context error: {e}")
+
+        # Get latest signals (cached from last scan)
+        signal_summary = []
+        try:
+            for inst in INSTRUMENTS:
+                sig = signals._last_signals.get(inst, "WAIT")
+                signal_summary.append(f"{inst.replace('_','/')}: {sig}")
+        except Exception:
+            pass
+
+        # Get upcoming news
+        news_summary = []
+        try:
+            from api.news_check import get_all_upcoming_events
+            events = get_all_upcoming_events(hours=8)
+            news_summary = [f"{e.get('title','')} ({e.get('country','')}) at {e.get('time_utc','')}"
+                           for e in events[:4]]
+        except Exception:
+            pass
+
+        # Build conversation history for context
+        history_text = ""
+        if req.history:
+            for turn in req.history[-6:]:  # last 6 turns
+                role = turn.get("role","")
+                msg  = turn.get("content","")
+                history_text += f"
+{role.upper()}: {msg}"
+
+        # Build full prompt
+        positions_text = "
+".join(
+            f"  - {p['instrument']} {p['direction']}: {p['units']:.0f} units, "
+            f"entry {p['entry']}, P&L ${p['pnl']:.2f}, SL {p['sl']}, TP {p['tp']}"
+            for p in ctx.get("positions", [])
+        ) or "  None"
+
+        signals_text = "
+".join(f"  - {s}" for s in signal_summary) or "  No recent scan"
+        news_text    = "
+".join(f"  - {n}" for n in news_summary)    or "  None upcoming"
+
+        system_prompt = f"""You are an expert trading assistant for a retail Oanda trader.
+You have real-time access to their account data and trading system.
+Be direct, specific, and actionable. Never vague. Real money is at stake.
+
+LIVE ACCOUNT DATA:
+  Balance:          £{ctx.get('balance',0):.2f}
+  NAV:              £{ctx.get('nav',0):.2f}
+  Margin available: £{ctx.get('margin_avail',0):.2f}
+  Daily P&L:        ${ctx.get('daily_pnl',0):.2f}
+  Daily loss:       ${ctx.get('daily_loss',0):.2f}
+  Daily warning:    {ctx.get('daily_warning', False)}
+  Margin warning:   {ctx.get('margin_warn', False)}
+
+OPEN POSITIONS ({ctx.get('open_trades',0)}/3 max):
+{positions_text}
+
+LATEST H4 SIGNALS:
+{signals_text}
+
+UPCOMING NEWS (next 8h):
+{news_text}
+
+TRADING RULES:
+  - 8 instruments: GBP/JPY, EUR/USD, XAU/USD, SUGAR, WHEAT, SPX500, WTI, NATGAS
+  - H4 confluence system: RSI + EMA + MACD + Donchian + ATR
+  - 1% risk per trade, max 3 positions, 1.5xATR stop, 2.5xATR target
+  - Signal threshold: 55 points minimum, auto-trade: 65%+ confidence
+  - Cluster limits: Energy max 1%, Agri max 0.75%, Risk-On max 1%
+  - Daily soft warning: 5%, hard lockout: 8%
+  - Weekly soft warning: 10%, hard lockout: 15%
+
+Answer concisely. If asked about a specific trade, reference the actual data above.
+Keep responses under 200 words unless a detailed explanation is genuinely needed."""
+
+        full_prompt = f"{history_text}
+USER: {req.message}
+ASSISTANT:"
+
+        response = gemini.analyse_debrief(
+            f"{system_prompt}
+
+CONVERSATION:{full_prompt}"
+        )
+
+        return {"ok": True, "response": response, "context_loaded": bool(ctx)}
+
+    except Exception as e:
+        logger.error(f"AI chat error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
