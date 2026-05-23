@@ -26,6 +26,7 @@ from api.auto_trader     import (
     check_new_signals, safety_check, add_pending_trade,
     check_expired_trades, process_telegram_reply,
     calculate_units, get_all_pending, clear_pending_trade,
+    register_active_trade, unlock_instrument, is_instrument_locked,
     _last_update_id
 )
 
@@ -289,12 +290,13 @@ def _process_auto_signal(sig: dict):
         logger.info(f"Auto-trader: {inst} blocked — {reason}")
         return
 
-    # Calculate position size
+    # Calculate position size with correlation adjustment (Fix 9)
     try:
-        account = oanda.get_account_summary()
-        balance = float(account.get("balance", 0))
-        atr     = sig.get("atr", 0)
-        units   = calculate_units(balance, atr, sig)
+        account     = oanda.get_account_summary()
+        balance     = float(account.get("balance", 0))
+        atr         = sig.get("atr", 0)
+        open_trades = oanda.get_open_trades()
+        units       = calculate_units(balance, atr, sig, open_trades=open_trades)
 
         if units <= 0:
             logger.warning(f"Auto-trader: {inst} — calculated 0 units, skipping")

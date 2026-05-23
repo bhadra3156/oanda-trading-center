@@ -25,15 +25,38 @@ MIN_MARGIN       = 20.0     # Minimum free margin in account currency
 MAX_OPEN_TRADES  = 3        # Hard limit on simultaneous positions
 
 # ── State ─────────────────────────────────────────────────────────────────────
-# Tracks last known signal per instrument to detect NEW signals
-_last_signals: dict = {}
+_last_signals:  dict = {}    # last known signal per instrument
+_pending_trades:dict = {}    # trades waiting for YES/NO
+_last_update_id:int  = 0     # Telegram polling offset
 
-# Pending trades waiting for YES/NO reply
-# { instrument: { ...trade details, expires_at, status } }
-_pending_trades: dict = {}
+# Fix 10: Minimum hold rule
+# After a trade is placed, lock that instrument for MIN_HOLD_BARS × 4 hours
+# Prevents whipsaw re-entries before the trade has had time to develop
+MIN_HOLD_BARS   = 6          # 6 H4 bars = 24 hours minimum hold
+_active_trades: dict = {}    # { instrument: entry_timestamp }
 
-# Track last Telegram update_id to avoid processing same message twice
-_last_update_id: int = 0
+def register_active_trade(instrument: str):
+    """Call when a trade is placed. Locks instrument for MIN_HOLD_BARS."""
+    import time
+    _active_trades[instrument] = time.time()
+    logger.info(f"Active trade registered: {instrument} — locked for {MIN_HOLD_BARS*4}h")
+
+def is_instrument_locked(instrument: str) -> bool:
+    """Returns True if instrument is within minimum hold period."""
+    import time
+    entry_ts = _active_trades.get(instrument)
+    if not entry_ts:
+        return False
+    elapsed_hours = (time.time() - entry_ts) / 3600
+    locked        = elapsed_hours < (MIN_HOLD_BARS * 4)
+    if not locked:
+        _active_trades.pop(instrument, None)  # Clean up expired lock
+    return locked
+
+def unlock_instrument(instrument: str):
+    """Manually unlock an instrument (e.g. when trade closes)."""
+    _active_trades.pop(instrument, None)
+    logger.info(f"Instrument unlocked: {instrument}")
 
 
 def check_new_signals(current_signals: dict) -> list:
@@ -66,6 +89,10 @@ def safety_check(sig: dict, oanda_client, correlation_checker=None) -> tuple:
     inst      = sig.get("instrument", "")
     direction = sig.get("signal", "")
     confidence= sig.get("confidence", 0)
+
+    # Fix 10: Minimum hold rule — instrument locked after recent trade
+    if is_instrument_locked(inst):
+        return False, f"{inst.replace('_','/')} locked — minimum hold period active (24h after entry). Prevents whipsaw re-entries."
 
     # 1. Confidence threshold
     if confidence < MIN_CONFIDENCE:
@@ -168,17 +195,61 @@ def check_expired_trades() -> list:
     return expired
 
 
-def calculate_units(balance: float, atr: float, sig: dict) -> int:
+# Cluster correlation map for adjusted sizing (Fix 9)
+CLUSTER_CORRELATION = {
+    "WTICO_USD":  {"NATGAS_USD": 0.65, "XAU_USD": 0.45},
+    "NATGAS_USD": {"WTICO_USD":  0.65},
+    "SUGAR_USD":  {"WHEAT_USD":  0.70},
+    "WHEAT_USD":  {"SUGAR_USD":  0.70},
+    "SPX500_USD": {"GBP_JPY":    0.55},
+    "GBP_JPY":    {"SPX500_USD": 0.55},
+    "XAU_USD":    {"EUR_USD":    0.50, "WTICO_USD": 0.45},
+    "EUR_USD":    {"XAU_USD":    0.50},
+}
+
+def get_correlation_adjustment(instrument: str, open_trades: list) -> float:
     """
-    ATR-based position sizing.
-    Risk = 1% of balance
+    Returns a risk multiplier (0.3–1.0) based on correlated open positions.
+    Fix 9: If you have SUGAR open and WHEAT fires, size WHEAT at 0.5x not 1x.
+    Units = 1% × (1 - max_correlation × existing_cluster_exposure_pct)
+    """
+    corr_map = CLUSTER_CORRELATION.get(instrument, {})
+    if not corr_map or not open_trades:
+        return 1.0  # No correlation — full size
+
+    max_corr = 0.0
+    for t in open_trades:
+        open_inst = t.get("instrument", "")
+        if open_inst == instrument:
+            continue
+        corr = corr_map.get(open_inst, 0.0)
+        if corr > max_corr:
+            max_corr = corr
+
+    # Reduce position size by correlation factor
+    # Max correlation 0.7 → size at 0.3× (30% of normal)
+    # No correlation 0.0 → size at 1.0× (100% of normal)
+    multiplier = max(0.3, 1.0 - max_corr)
+    if max_corr > 0.3:
+        logger.info(f"{instrument}: correlation-adjusted sizing {multiplier:.2f}x (max corr: {max_corr:.2f})")
+    return multiplier
+
+
+def calculate_units(balance: float, atr: float, sig: dict, open_trades: list = None) -> int:
+    """
+    ATR-based position sizing with correlation adjustment (Fix 9).
+    Risk = 1% of balance × correlation_multiplier
     Stop = 1.5 x ATR
     Units = Risk / Stop distance
     """
     if not balance or not atr or atr <= 0:
         return 0
 
-    risk_amount   = balance * (RISK_PERCENT / 100)
+    # Fix 9: Adjust risk % based on correlated open positions
+    corr_multiplier = get_correlation_adjustment(
+        sig.get("instrument", ""), open_trades or []
+    )
+    risk_amount   = balance * (RISK_PERCENT / 100) * corr_multiplier
     stop_distance = atr * 1.5
 
     if stop_distance <= 0:
@@ -269,6 +340,9 @@ def process_telegram_reply(
                 take_profit=tp,
             )
 
+            # Fix 10: Register trade to enforce minimum hold period
+            register_active_trade(inst)
+
             inst_display = inst.replace("_", "/")
             entry_actual = trade.get("entry", "market")
 
@@ -285,6 +359,7 @@ def process_telegram_reply(
                 f"_Trade placed via auto-trader_"
             )
             clear_pending_trade(inst)
+            register_active_trade(inst)  # Fix 10: enforce minimum hold
             logger.info(f"Auto trade executed: {inst} {direction} {units} units")
             return True
 

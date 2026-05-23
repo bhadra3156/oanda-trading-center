@@ -343,11 +343,45 @@ class SignalEngine:
             bs, ss = 0, 0
             br, sr = [], []
 
-            # RSI
+            # RSI — level + divergence detection (Fix 3)
             if rsi and rsi < 35:   bs += 30; br.append(f"RSI {rsi:.1f} oversold on H4")
             elif rsi and rsi < 42: bs += 15; br.append(f"RSI {rsi:.1f} approaching oversold")
             if rsi and rsi > 65:   ss += 30; sr.append(f"RSI {rsi:.1f} overbought on H4")
             elif rsi and rsi > 58: ss += 15; sr.append(f"RSI {rsi:.1f} approaching overbought")
+
+            # RSI Divergence — higher probability than raw level signals
+            # Look back 5 bars for price vs RSI direction mismatch
+            if len(closes) >= 20 and len(candles) >= 20:
+                try:
+                    # Calculate RSI for 5 bars ago
+                    rsi_prev5 = calc_rsi(closes[:-5], 14)
+                    price_now  = closes[-1]
+                    price_prev5= closes[-5]
+
+                    if rsi and rsi_prev5:
+                        # Bullish hidden divergence: price higher low, RSI lower low
+                        # Confirms uptrend continuation
+                        if price_now > price_prev5 and rsi < rsi_prev5 - 3:
+                            bs += 20
+                            br.append(f"Bullish RSI divergence: price up, RSI {rsi:.1f} < {rsi_prev5:.1f}")
+
+                        # Bearish hidden divergence: price lower high, RSI higher high
+                        elif price_now < price_prev5 and rsi > rsi_prev5 + 3:
+                            ss += 20
+                            sr.append(f"Bearish RSI divergence: price dn, RSI {rsi:.1f} > {rsi_prev5:.1f}")
+
+                        # Classic bullish divergence: price makes lower low, RSI higher low
+                        # Strongest reversal signal
+                        elif price_now < price_prev5 and rsi > rsi_prev5 + 5 and rsi < 45:
+                            bs += 25
+                            br.append(f"CLASSIC bullish divergence: price LL, RSI HL at {rsi:.1f}")
+
+                        # Classic bearish divergence: price makes higher high, RSI lower high
+                        elif price_now > price_prev5 and rsi < rsi_prev5 - 5 and rsi > 55:
+                            ss += 25
+                            sr.append(f"CLASSIC bearish divergence: price HH, RSI LH at {rsi:.1f}")
+                except Exception:
+                    pass
 
             # EMAs
             if ema200 and price > ema200: bs += 20; br.append("Price above 200 EMA — uptrend")
@@ -499,9 +533,27 @@ class SignalEngine:
                 confidence = min(95, int(bs))
                 reasons    = br
                 try:
-                    entry = float(self.client.get_live_price(instrument)["ask"])
+                    live       = self.client.get_live_price(instrument)
+                    market_ask = float(live["ask"])
+                    market_bid = float(live["bid"])
                 except Exception:
-                    entry = price
+                    market_ask = price
+                    market_bid = price
+
+                # Fix 8: ATR Pullback Entry
+                # If price has surged > 0.5×ATR above 20 EMA in last bar
+                # suggest limit entry at 20 EMA instead of market
+                pullback_entry = None
+                entry_type     = "MARKET"
+                if ema20 and atr:
+                    surge = market_ask - float(ema20)
+                    if surge > atr * 0.5:
+                        # Price too extended — use limit at 20 EMA
+                        pullback_entry = _r(float(ema20), 5)
+                        entry_type     = "LIMIT"
+                        reasons = list(br) + [f"Extended {surge/atr:.1f}x ATR above 20 EMA — limit entry at {pullback_entry}"]
+
+                entry = pullback_entry if pullback_entry else market_ask
                 if atr:
                     sl = _r(entry - atr * 1.5, 5)
                     tp = _r(entry + atr * 2.5, 5)
@@ -511,9 +563,24 @@ class SignalEngine:
                 confidence = min(95, int(ss))
                 reasons    = sr
                 try:
-                    entry = float(self.client.get_live_price(instrument)["bid"])
+                    live       = self.client.get_live_price(instrument)
+                    market_ask = float(live["ask"])
+                    market_bid = float(live["bid"])
                 except Exception:
-                    entry = price
+                    market_ask = price
+                    market_bid = price
+
+                # Fix 8: ATR Pullback Entry for SELL
+                pullback_entry = None
+                entry_type     = "MARKET"
+                if ema20 and atr:
+                    surge = float(ema20) - market_bid
+                    if surge > atr * 0.5:
+                        pullback_entry = _r(float(ema20), 5)
+                        entry_type     = "LIMIT"
+                        reasons = list(sr) + [f"Extended {surge/atr:.1f}x ATR below 20 EMA — limit entry at {pullback_entry}"]
+
+                entry = pullback_entry if pullback_entry else market_bid
                 if atr:
                     sl = _r(entry + atr * 1.5, 5)
                     tp = _r(entry - atr * 2.5, 5)
@@ -573,6 +640,8 @@ class SignalEngine:
                 "spread_blocked":   False,
                 "spread_info":      spread_info,
                 "groups_confirmed": buy_groups if signal == "BUY" else sell_groups if signal == "SELL" else 0,
+                "entry_type":      entry_type if signal in ("BUY","SELL") else "NONE",
+                "pullback_entry":  pullback_entry,
             }
 
         except Exception as e:
