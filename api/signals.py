@@ -528,6 +528,10 @@ class SignalEngine:
             buy_groups  = count_groups(br) if br else 0
             sell_groups = count_groups(sr) if sr else 0
 
+            # Default values — ensure always defined even for WAIT signals
+            entry_type     = "NONE"
+            pullback_entry = None
+
             if bs >= 55 and bs > ss and buy_groups >= 3:
                 signal     = "BUY"
                 confidence = min(95, int(bs))
