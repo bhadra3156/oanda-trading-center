@@ -794,13 +794,16 @@ function renderSignals(signals, account){
         <div class="sc-size-val">${units.toLocaleString()} units</div>
       </div>`:'';
 
-    const tradeHtml = isBuy && s.entry ? `
-      <button class="sc-trade buy" onclick="openTradeModal('${inst.id}','${inst.name}','BUY',${s.entry},${s.sl},${s.tp},${units})">
-        BUY ${inst.name} &nbsp;&mdash;&nbsp; ${units.toLocaleString()} units
-      </button>` : isSell && s.entry ? `
-      <button class="sc-trade sell" onclick="openTradeModal('${inst.id}','${inst.name}','SELL',${s.entry},${s.sl},${s.tp},${units})">
-        SELL ${inst.name} &nbsp;&mdash;&nbsp; ${units.toLocaleString()} units
-      </button>` : `
+    const     // Build calculator URL — all signal params pre-filled
+    const calcUrl = `calculator.html?instrument=${inst.id}&direction=${s.signal}&entry=${s.entry||''}&sl=${s.sl||''}&tp=${s.tp||''}&units=${units}&confidence=${s.confidence||0}`;
+
+    tradeHtml = isBuy && s.entry ? `
+      <a href="${calcUrl}" class="sc-trade buy" style="text-decoration:none;display:block;text-align:center">
+        TRADE THIS &rarr;&nbsp; ${inst.name} BUY
+      </a>` : isSell && s.entry ? `
+      <a href="${calcUrl}" class="sc-trade sell" style="text-decoration:none;display:block;text-align:center">
+        TRADE THIS &rarr;&nbsp; ${inst.name} SELL
+      </a>` : `
       <button class="sc-trade wait" disabled>
         WAIT &mdash; No confluence yet
       </button>`;

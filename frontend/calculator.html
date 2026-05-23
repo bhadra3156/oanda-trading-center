@@ -1457,6 +1457,92 @@ fetchPrices();
 fetchTrades();
 fetchNews();
 
+// ── AUTO-FILL FROM SIGNAL CARD URL PARAMS ─────────────────────────────────────
+(function autoFillFromSignal() {
+  const p = new URLSearchParams(window.location.search);
+  const instrument  = p.get('instrument');
+  const direction   = p.get('direction');
+  const entry       = p.get('entry');
+  const sl          = p.get('sl');
+  const tp          = p.get('tp');
+  const units       = p.get('units');
+  const confidence  = p.get('confidence');
+
+  if (!instrument) return; // Normal calculator load — do nothing
+
+  // 1. Select instrument
+  setTimeout(() => {
+    selectInstrument(instrument);
+
+    // 2. Set direction
+    if (direction === 'BUY' || direction === 'SELL') {
+      setDirection(direction);
+    }
+
+    // 3. Show pre-fill banner
+    const banner = document.createElement('div');
+    banner.id = 'signal-prefill-banner';
+    banner.style.cssText = `
+      background:rgba(56,139,253,0.1);border:1px solid rgba(56,139,253,0.25);
+      border-radius:8px;padding:10px 16px;margin-bottom:1rem;
+      font-size:12px;color:var(--muted2);display:flex;
+      align-items:center;justify-content:space-between;gap:12px
+    `;
+    const instName = instrument.replace('_','/');
+    const confText = confidence ? ` · ${confidence}% confidence` : '';
+    banner.innerHTML = `
+      <span>
+        <span style="color:var(--blue);font-weight:700">Signal pre-filled:</span>
+        ${direction} ${instName}${confText}
+        — Entry: <span style="font-family:var(--mono);color:var(--blue)">${entry||'live price'}</span>
+        &nbsp;SL: <span style="font-family:var(--mono);color:var(--red)">${sl||'—'}</span>
+        &nbsp;TP: <span style="font-family:var(--mono);color:var(--green)">${tp||'—'}</span>
+      </span>
+      <a href="index.html" style="color:var(--muted);font-size:11px;text-decoration:none;flex-shrink:0">
+        &larr; Back to Dashboard
+      </a>
+    `;
+
+    // Insert banner at top of main content
+    const main = document.querySelector('.main');
+    if (main) main.insertBefore(banner, main.firstChild);
+
+    // 4. Store signal levels in state for use after calculation
+    state._signalEntry = entry ? parseFloat(entry) : null;
+    state._signalSL    = sl    ? parseFloat(sl)    : null;
+    state._signalTP    = tp    ? parseFloat(tp)    : null;
+    state._signalUnits = units ? parseInt(units)   : null;
+
+    // 5. Auto-trigger calculation after prices load
+    setTimeout(async () => {
+      await calculate();
+
+      // 6. After calculation, override with signal's exact levels if available
+      if (state._signalSL && state._signalTP && state.result) {
+        state.result.stop_loss   = state._signalSL;
+        state.result.take_profit = state._signalTP;
+        document.getElementById('r-sl').textContent = state._signalSL.toFixed(5);
+        document.getElementById('r-tp').textContent = state._signalTP.toFixed(5);
+
+        // Update trade button text with exact units from signal
+        const tradeBtn = document.getElementById('trade-btn');
+        if (tradeBtn && state._signalUnits) {
+          const dir = direction === 'BUY' ? 'BUY' : 'SELL';
+          tradeBtn.innerHTML = `${dir === 'BUY' ? '&uarr;' : '&darr;'} ${dir} ${state._signalUnits.toLocaleString()} units of ${instName}`;
+          state.result.units = state._signalUnits;
+        }
+      }
+
+      // 7. Scroll to results
+      const results = document.getElementById('results');
+      if (results) {
+        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 1500); // Wait for prices to load
+
+  }, 300); // Wait for instrument grid to render
+})();
+
 // Auto-refresh prices every 15s
 setInterval(fetchPrices, 15000);
 setInterval(fetchAccount, 30000);
