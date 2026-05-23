@@ -286,16 +286,71 @@ class SignalEngine:
             bs = int(bs * smult)
             ss = int(ss * smult)
 
-            # H1 confirmation
+            # ── MULTI-TIMEFRAME ANALYSIS ─────────────────────────────────────
+            # D1 bias: price vs 50 EMA on Daily
+            d1_bias   = "NEUTRAL"
+            d1_ema50  = None
+            d1_rsi    = None
             try:
-                h1     = self.client.get_candles(instrument, granularity="H1", count=20)
-                h1rsi  = calc_rsi([float(c["close"]) for c in h1], 14)
-                if h1rsi and bs > ss and h1rsi < 50:
-                    bs += 10; br.append(f"H1 RSI {h1rsi:.0f} confirms bullish bias")
-                if h1rsi and ss > bs and h1rsi > 50:
-                    ss += 10; sr.append(f"H1 RSI {h1rsi:.0f} confirms bearish bias")
+                d1 = self.client.get_candles(instrument, granularity="D", count=60)
+                if len(d1) >= 51:
+                    d1_closes = [float(c["close"]) for c in d1]
+                    d1_ema50  = calc_ema(d1_closes, 50)
+                    d1_rsi    = calc_rsi(d1_closes, 14)
+                    d1_price  = d1_closes[-1]
+                    if d1_ema50:
+                        if d1_price > d1_ema50 * 1.001:
+                            d1_bias = "BULLISH"
+                        elif d1_price < d1_ema50 * 0.999:
+                            d1_bias = "BEARISH"
+                    # D1 bonus to score
+                    if d1_bias == "BULLISH" and bs > ss:
+                        bs += 8; br.append(f"D1 bullish bias — price above 50 EMA")
+                    elif d1_bias == "BEARISH" and ss > bs:
+                        ss += 8; sr.append(f"D1 bearish bias — price below 50 EMA")
             except Exception:
                 pass
+
+            # H1 momentum + confluence
+            h1_momentum = "NEUTRAL"
+            h1_rsi      = None
+            try:
+                h1 = self.client.get_candles(instrument, granularity="H1", count=24)
+                if len(h1) >= 15:
+                    h1_closes = [float(c["close"]) for c in h1]
+                    h1_rsi    = calc_rsi(h1_closes, 14)
+                    h1_ema20  = calc_ema(h1_closes, 20)
+                    h1_price  = h1_closes[-1]
+
+                    # H1 momentum direction
+                    if h1_rsi and h1_ema20:
+                        if h1_rsi < 50 and h1_price < h1_ema20:
+                            h1_momentum = "BEARISH"
+                        elif h1_rsi > 50 and h1_price > h1_ema20:
+                            h1_momentum = "BULLISH"
+
+                    # Score adjustment
+                    if h1_rsi and bs > ss and h1_rsi < 50:
+                        bs += 10; br.append(f"H1 RSI {h1_rsi:.0f} confirms bullish bias")
+                    if h1_rsi and ss > bs and h1_rsi > 50:
+                        ss += 10; sr.append(f"H1 RSI {h1_rsi:.0f} confirms bearish bias")
+            except Exception:
+                pass
+
+            # ── CONFLUENCE SCORE ─────────────────────────────────────────────
+            # 3/3 = D1 + H4 + H1 all aligned
+            # Calculate after signal is determined
+            def calc_confluence(sig_direction, d1, h4_trend, h1_mom):
+                score = 0
+                if sig_direction == "BUY":
+                    if d1  == "BULLISH":  score += 1
+                    if h4_trend == "BULLISH": score += 1
+                    if h1_mom == "BULLISH":   score += 1
+                elif sig_direction == "SELL":
+                    if d1  == "BEARISH":  score += 1
+                    if h4_trend == "BEARISH": score += 1
+                    if h1_mom == "BEARISH":   score += 1
+                return score
 
             signal = "WAIT"
             confidence = 0
@@ -331,6 +386,22 @@ class SignalEngine:
                     sl = _r(entry + atr * 1.5, 5)
                     tp = _r(entry - atr * 2.5, 5)
 
+            # Confluence score: D1 + H4 + H1 alignment
+            confluence_score = calc_confluence(signal, d1_bias, trend, h1_momentum)
+            confluence_label = (
+                "STRONG"   if confluence_score == 3 else
+                "MODERATE" if confluence_score == 2 else
+                "WEAK"     if confluence_score == 1 else
+                "NONE"
+            )
+            # Boost confidence for 3/3 alignment
+            if signal in ("BUY","SELL") and confluence_score == 3:
+                confidence = min(95, confidence + 8)
+            # Add confluence to reasons
+            if signal in ("BUY","SELL") and confluence_score >= 2:
+                reasons = list(reasons)
+                reasons.insert(0, f"{confluence_label} confluence: D1+H4+H1 aligned")
+
             return {
                 "instrument":     instrument,
                 "timeframe":      "H4",
@@ -358,6 +429,13 @@ class SignalEngine:
                 "circuit_breaker":False,
                 "news_blackout":  False,
                 "upcoming_events":upcoming,
+                "d1_bias":        d1_bias,
+                "d1_ema50":       _r(d1_ema50, 6),
+                "d1_rsi":         _r(d1_rsi, 2),
+                "h1_momentum":    h1_momentum,
+                "h1_rsi":         _r(h1_rsi, 2) if h1_rsi else None,
+                "confluence":     confluence_score,
+                "confluence_label": confluence_label,
             }
 
         except Exception as e:

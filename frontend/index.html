@@ -124,6 +124,26 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .sc-ai-text{font-size:10px;color:var(--muted2);line-height:1.6;white-space:normal}
 
 .sc-reason{font-size:10px;color:var(--muted);line-height:1.5;border-top:1px solid var(--border);padding-top:8px}
+/* MULTI-TIMEFRAME CONFLUENCE */
+.sc-mtf{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px;padding:8px;background:var(--bg4);border-radius:8px;border:1px solid var(--border)}
+.sc-mtf-item{text-align:center;padding:4px 2px}
+.sc-mtf-tf{font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.sc-mtf-val{font-size:9px;font-weight:800;padding:2px 5px;border-radius:3px;display:inline-block;letter-spacing:0.05em}
+.sc-mtf-val.bull{background:var(--gdim);color:var(--green)}
+.sc-mtf-val.bear{background:var(--rdim);color:var(--red)}
+.sc-mtf-val.neu{background:var(--bg3);color:var(--muted)}
+.sc-mtf-val.conf{background:var(--gdim);color:var(--green)}
+.sc-mtf-val.wait{background:var(--bg3);color:var(--muted)}
+.sc-confluence{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:5px 8px;border-radius:6px;font-size:10px}
+.sc-confluence.strong{background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.2)}
+.sc-confluence.moderate{background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.15)}
+.sc-confluence.weak{background:rgba(248,81,73,0.06);border:1px solid rgba(248,81,73,0.1)}
+.sc-confluence.none{background:var(--bg3);border:1px solid var(--border)}
+.sc-conf-score{font-weight:800;font-family:var(--mono)}
+.sc-conf-score.strong{color:var(--green)}.sc-conf-score.moderate{color:var(--gold)}.sc-conf-score.weak{color:var(--red)}.sc-conf-score.none{color:var(--muted)}
+.sc-conf-label{font-weight:700;text-transform:uppercase;letter-spacing:0.08em}
+.sc-conf-label.strong{color:var(--green)}.sc-conf-label.moderate{color:var(--gold)}.sc-conf-label.weak{color:var(--red)}.sc-conf-label.none{color:var(--muted)}
+.sc-mtf-divider{width:1px;background:var(--border);margin:4px 0}
 .sc-chart{width:100%;height:160px;border-radius:8px;overflow:hidden;margin-bottom:8px;background:var(--bg3);border:1px solid var(--border);position:relative}
 .sc-chart-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);font-family:var(--mono)}
 
@@ -645,6 +665,55 @@ function renderSignals(signals, account){
         <div class="sc-lv"><div class="scl-lbl t">TP</div><div class="scl-val">${fmtP(inst.id,s.tp)}</div></div>
       </div>`:'';
 
+    // ── MULTI-TIMEFRAME CONFLUENCE DISPLAY ──────────────────────────────────
+    const d1Bias    = s.d1_bias    || 'NEUTRAL';
+    const h1Mom     = s.h1_momentum|| 'NEUTRAL';
+    const confScore = s.confluence || 0;
+    const confLabel = s.confluence_label || 'NONE';
+
+    function mtfClass(val){
+      if(val==='BULLISH'||val==='CONFIRMING') return 'bull';
+      if(val==='BEARISH'||val==='CONFLICTING') return 'bear';
+      return 'neu';
+    }
+
+    // H4 signal for MTF display
+    const h4Display = isBuy?'BULLISH':isSell?'BEARISH':'WAIT';
+    const h4Class   = isBuy?'bull':isSell?'bear':'wait';
+
+    // H1 display
+    const h1Display = h1Mom==='BULLISH'?'CONFIRM':h1Mom==='BEARISH'?'CONFIRM':'NEUTRAL';
+    const h1Class   = (isBuy&&h1Mom==='BULLISH')||(isSell&&h1Mom==='BEARISH')?'conf':
+                      (isBuy&&h1Mom==='BEARISH')||(isSell&&h1Mom==='BULLISH')?'bear':'neu';
+    const h1Label   = (isBuy&&h1Mom==='BULLISH')?'CONFIRM':
+                      (isSell&&h1Mom==='BEARISH')?'CONFIRM':
+                      (isBuy&&h1Mom==='BEARISH')||(isSell&&h1Mom==='BULLISH')?'CONFLICT':'NEUTRAL';
+
+    const mtfHtml = `
+      <div class="sc-mtf">
+        <div class="sc-mtf-item">
+          <div class="sc-mtf-tf">D1</div>
+          <div class="sc-mtf-val ${mtfClass(d1Bias)}">${d1Bias==='BULLISH'?'BULL':d1Bias==='BEARISH'?'BEAR':'NEUT'}</div>
+        </div>
+        <div class="sc-mtf-divider"></div>
+        <div class="sc-mtf-item">
+          <div class="sc-mtf-tf">H4</div>
+          <div class="sc-mtf-val ${h4Class}">${h4Display==='BULLISH'?'BULL':h4Display==='BEARISH'?'BEAR':'WAIT'}</div>
+        </div>
+        <div class="sc-mtf-divider"></div>
+        <div class="sc-mtf-item">
+          <div class="sc-mtf-tf">H1</div>
+          <div class="sc-mtf-val ${h1Class}">${h1Label}</div>
+        </div>
+      </div>
+      <div class="sc-confluence ${confLabel.toLowerCase()}">
+        <div>
+          <span class="sc-conf-label ${confLabel.toLowerCase()}">${confLabel}</span>
+          <span style="color:var(--muted);margin-left:6px;font-size:9px">confluence</span>
+        </div>
+        <span class="sc-conf-score ${confLabel.toLowerCase()}">${confScore}/3</span>
+      </div>`;
+
     const aiHtml=ai.summary?`
       <div class="sc-ai">
         <div class="sc-ai-hdr">
@@ -687,6 +756,7 @@ function renderSignals(signals, account){
         <span class="sc-badge ${cc}">${s.signal==='BUY'?'BUY':s.signal==='SELL'?'SELL':'WAIT'}</span>
       </div>
       <div class="sc-price">${fmtP(inst.id,s.price)}</div>
+      ${mtfHtml}
       <div class="sc-chart" id="chart-${inst.id}">
         <div class="sc-chart-loading">Loading H4 chart...</div>
       </div>
