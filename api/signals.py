@@ -105,11 +105,40 @@ def get_pip(instrument):
         return 1.0
     return 0.0001
 
+# Per-instrument session weights — each instrument active in its natural hours
+INSTRUMENT_SESSION_WEIGHTS = {
+    "GBP_JPY":    {"LONDON": 1.0, "NEW_YORK": 0.8, "ASIAN": 0.7},
+    "EUR_USD":    {"LONDON": 1.0, "NEW_YORK": 0.9, "ASIAN": 0.4},
+    "XAU_USD":    {"LONDON": 0.9, "NEW_YORK": 1.0, "ASIAN": 0.5},
+    "SUGAR_USD":  {"LONDON": 0.8, "NEW_YORK": 0.9, "ASIAN": 0.4},
+    "WHEAT_USD":  {"LONDON": 0.8, "NEW_YORK": 0.9, "ASIAN": 0.4},
+    "SPX500_USD": {"LONDON": 0.5, "NEW_YORK": 1.0, "ASIAN": 0.2},
+    "WTICO_USD":  {"LONDON": 0.7, "NEW_YORK": 1.0, "ASIAN": 0.3},
+    "NATGAS_USD": {"LONDON": 0.7, "NEW_YORK": 1.0, "ASIAN": 0.3},
+}
+
+# Known normal spreads for spread filter (Option A — hardcoded baselines)
+NORMAL_SPREADS = {
+    "EUR_USD":    0.00020,
+    "GBP_JPY":    0.040,
+    "XAU_USD":    0.50,
+    "SUGAR_USD":  0.00010,
+    "WHEAT_USD":  0.50,
+    "SPX500_USD": 0.50,
+    "WTICO_USD":  0.04,
+    "NATGAS_USD": 0.003,
+}
+SPREAD_MULTIPLIER_LIMIT = 3.0  # Block if spread > 3x normal
+
 def get_session():
     h = datetime.utcnow().hour
     if 7  <= h <= 16: return "LONDON",   1.0
     if 13 <= h <= 21: return "NEW_YORK", 1.0
     return "ASIAN", 0.6
+
+def get_session_weight(instrument, session):
+    weights = INSTRUMENT_SESSION_WEIGHTS.get(instrument, {})
+    return weights.get(session, 0.6)
 
 def circuit_breaker_active(oanda_client):
     try:
@@ -211,6 +240,67 @@ class SignalEngine:
                 except Exception as e:
                     logger.debug(f"News check error: {e}")
 
+            # ── SPREAD FILTER (Fix 4) ────────────────────────────────────────
+            # Block trades when spread is abnormally wide (>3x normal baseline)
+            spread_blocked = False
+            spread_info    = {}
+            try:
+                price_data = self.client.get_live_price(instrument)
+                current_spread = price_data.get("spread", 0)
+                normal_spread  = NORMAL_SPREADS.get(instrument, 0.001)
+                spread_ratio   = current_spread / normal_spread if normal_spread > 0 else 1
+                spread_info    = {
+                    "current": round(current_spread, 6),
+                    "normal":  round(normal_spread, 6),
+                    "ratio":   round(spread_ratio, 2),
+                }
+                if spread_ratio > SPREAD_MULTIPLIER_LIMIT:
+                    spread_blocked = True
+                    logger.info(f"{instrument} spread blocked: {spread_ratio:.1f}x normal")
+            except Exception as e:
+                logger.debug(f"Spread check error: {e}")
+
+            if spread_blocked:
+                return {
+                    "instrument": instrument, "timeframe": "H4",
+                    "signal": "WAIT", "confidence": 0,
+                    "price": self._safe_price(instrument),
+                    "entry": None, "sl": None, "tp": None,
+                    "sl_pips": None, "tp_pips": None,
+                    "rsi": None, "ema20": None, "ema50": None, "ema200": None,
+                    "atr": None, "macd": None, "trend": "SPREAD_BLOCKED",
+                    "session": get_session()[0], "vol_surge": False,
+                    "donchian_high": None, "donchian_low": None,
+                    "circuit_breaker": False, "news_blackout": False,
+                    "spread_blocked": True, "spread_info": spread_info,
+                    "upcoming_events": upcoming,
+                    "reasons": [
+                        f"Spread too wide: {spread_info.get('ratio',0):.1f}x normal",
+                        f"Current: {spread_info.get('current',0):.5f} vs normal {spread_info.get('normal',0):.5f}",
+                        "Wait for spread to normalise",
+                        "Typically widens during low liquidity / news",
+                    ], "candle_count": 0,
+                }
+
+            # ── WEEKLY STRUCTURE FILTER (Fix 1) ───────────────────────────────
+            # Only trade WITH the weekly trend — reduces counter-trend losses
+            weekly_bias    = "NEUTRAL"
+            weekly_ema20   = None
+            counter_trend  = False
+            try:
+                w1 = self.client.get_candles(instrument, granularity="W", count=30)
+                if len(w1) >= 21:
+                    w1_closes  = [float(c["close"]) for c in w1]
+                    weekly_ema20 = calc_ema(w1_closes, 20)
+                    w1_price   = w1_closes[-1]
+                    if weekly_ema20:
+                        if w1_price > weekly_ema20 * 1.001:
+                            weekly_bias = "BULLISH"
+                        elif w1_price < weekly_ema20 * 0.999:
+                            weekly_bias = "BEARISH"
+            except Exception as e:
+                logger.debug(f"Weekly candles error: {e}")
+
             # ── TECHNICAL ANALYSIS ───────────────────────────────────────────
             candles = self.client.get_candles(instrument, granularity="H4", count=250)
             if len(candles) < 210:
@@ -271,20 +361,47 @@ class SignalEngine:
             if macd_bull: bs += 20; br.append("MACD crossed above zero line")
             if macd_bear: ss += 20; sr.append("MACD crossed below zero line")
 
-            # Donchian breakout
+            # Donchian breakout — volume is REQUIRED gate (Fix 2)
+            # Breakouts without volume confirmation are fakeouts ~60% of the time
             if don_high and float(prev["close"]) < float(don_high) <= float(latest["close"]):
-                bs += 18; br.append(f"H4 breakout above {don_high:.4f}")
+                if vol_surge:
+                    bs += 18; br.append(f"H4 breakout above {don_high:.4f} WITH volume")
+                else:
+                    bs += 8;  br.append(f"H4 breakout above {don_high:.4f} — LOW VOLUME, reduced score")
             if don_low and float(prev["close"]) > float(don_low) >= float(latest["close"]):
-                ss += 18; sr.append(f"H4 breakdown below {don_low:.4f}")
+                if vol_surge:
+                    ss += 18; sr.append(f"H4 breakdown below {don_low:.4f} WITH volume")
+                else:
+                    ss += 8;  sr.append(f"H4 breakdown below {don_low:.4f} — LOW VOLUME, reduced score")
 
-            # Volume
+            # Volume surge bonus (non-breakout)
             if vol_surge:
-                if bs >= ss: bs += 5; br.append("Volume surge confirms momentum")
-                else:        ss += 5; sr.append("Volume surge confirms momentum")
+                if bs > ss: bs += 5; br.append("Volume surge confirms bullish momentum")
+                elif ss > bs: ss += 5; sr.append("Volume surge confirms bearish momentum")
 
-            # Session multiplier
-            bs = int(bs * smult)
-            ss = int(ss * smult)
+            # Per-instrument session multiplier (Fix 6)
+            inst_smult = get_session_weight(instrument, session)
+            bs = int(bs * inst_smult)
+            ss = int(ss * inst_smult)
+
+            # ── WEEKLY TREND ALIGNMENT (Fix 1 continued) ────────────────────
+            # Counter-trend signals get confidence penalty
+            # BUY signal against weekly BEARISH trend = counter-trend
+            # SELL signal against weekly BULLISH trend = counter-trend
+            if weekly_bias == "BEARISH" and bs > ss:
+                counter_trend = True
+                bs = int(bs * 0.75)  # 25% penalty — still possible but harder to qualify
+                br.append(f"Counter-trend: H4 BUY vs Weekly BEARISH — reduced score")
+            elif weekly_bias == "BULLISH" and ss > bs:
+                counter_trend = True
+                ss = int(ss * 0.75)
+                sr.append(f"Counter-trend: H4 SELL vs Weekly BULLISH — reduced score")
+            elif weekly_bias == "BULLISH" and bs > ss:
+                bs = int(bs * 1.05)  # Small bonus for trend alignment
+                br.append(f"Weekly BULLISH — H4 BUY aligned with trend")
+            elif weekly_bias == "BEARISH" and ss > bs:
+                ss = int(ss * 1.05)
+                sr.append(f"Weekly BEARISH — H4 SELL aligned with trend")
 
             # ── MULTI-TIMEFRAME ANALYSIS ─────────────────────────────────────
             # D1 bias: price vs 50 EMA on Daily
@@ -352,6 +469,18 @@ class SignalEngine:
                     if h1_mom == "BEARISH":   score += 1
                 return score
 
+            # ── FIX 5: Count confirmed indicator GROUPS (not just score) ────────
+            # Need minimum 3 of 5 groups confirmed for a valid signal
+            def count_groups(buy_reasons):
+                groups_hit = 0
+                text = " ".join(buy_reasons).lower()
+                if "rsi"     in text: groups_hit += 1
+                if "ema"     in text or "trend" in text: groups_hit += 1
+                if "macd"    in text: groups_hit += 1
+                if "breakout" in text or "breakdown" in text: groups_hit += 1
+                if "volume"  in text or "h1 rsi" in text: groups_hit += 1
+                return groups_hit
+
             signal = "WAIT"
             confidence = 0
             entry = sl = tp = None
@@ -362,7 +491,10 @@ class SignalEngine:
                 "Wait for signal confluence",
             ]
 
-            if bs >= 55 and bs > ss:
+            buy_groups  = count_groups(br) if br else 0
+            sell_groups = count_groups(sr) if sr else 0
+
+            if bs >= 55 and bs > ss and buy_groups >= 3:
                 signal     = "BUY"
                 confidence = min(95, int(bs))
                 reasons    = br
@@ -374,7 +506,7 @@ class SignalEngine:
                     sl = _r(entry - atr * 1.5, 5)
                     tp = _r(entry + atr * 2.5, 5)
 
-            elif ss >= 55 and ss > bs:
+            elif ss >= 55 and ss > bs and sell_groups >= 3:
                 signal     = "SELL"
                 confidence = min(95, int(ss))
                 reasons    = sr
@@ -436,6 +568,11 @@ class SignalEngine:
                 "h1_rsi":         _r(h1_rsi, 2) if h1_rsi else None,
                 "confluence":     confluence_score,
                 "confluence_label": confluence_label,
+                "weekly_bias":      weekly_bias,
+                "counter_trend":    counter_trend,
+                "spread_blocked":   False,
+                "spread_info":      spread_info,
+                "groups_confirmed": buy_groups if signal == "BUY" else sell_groups if signal == "SELL" else 0,
             }
 
         except Exception as e:

@@ -58,52 +58,99 @@ class TelegramBot:
         return []
 
     def send_signal_alert(self, inst: str, sig: dict, ai: dict, units: int) -> bool:
-        """
-        Send a trade alert asking for YES/NO confirmation.
-        This is the core semi-auto trading message.
-        """
+        """Send trade alert with full quality scorecard (Fix 7)."""
         if self._paused:
             return False
 
+        from datetime import datetime, timedelta, timezone
         direction  = sig.get("signal", "")
-        arrow      = "BUY" if direction == "BUY" else "SELL"
         ai_verdict = ai.get("verdict", "N/A") if ai else "N/A"
         ai_summary = ai.get("summary", "N/A") if ai else "N/A"
         confidence = sig.get("confidence", 0)
         session    = sig.get("session", "")
+        expires    = (datetime.now(timezone.utc) + timedelta(minutes=15)).strftime("%H:%M UTC")
 
-        # Calculate expiry time
-        from datetime import datetime, timedelta, timezone
-        expires = (datetime.now(timezone.utc) + timedelta(minutes=15)).strftime("%H:%M UTC")
-
-        # R:R display
-        sl   = sig.get("sl", 0)
-        tp   = sig.get("tp", 0)
-        entry= sig.get("entry", 0)
+        # R:R calculation
+        sl = sig.get("sl", 0); tp = sig.get("tp", 0); entry = sig.get("entry", 0)
+        rr = "N/A"
         if sl and tp and entry:
-            sl_dist = abs(float(entry) - float(sl))
-            tp_dist = abs(float(tp)    - float(entry))
-            rr      = f"{tp_dist/sl_dist:.1f}:1" if sl_dist > 0 else "N/A"
+            sd = abs(float(entry) - float(sl))
+            td = abs(float(tp)    - float(entry))
+            if sd > 0: rr = f"{td/sd:.1f}:1"
+
+        # Quality scorecard gates
+        conf_score    = sig.get("confluence", 0)
+        conf_label    = sig.get("confluence_label", "NONE")
+        weekly_bias   = sig.get("weekly_bias", "NEUTRAL")
+        counter_trend = sig.get("counter_trend", False)
+        groups        = sig.get("groups_confirmed", 0)
+        spread_ratio  = sig.get("spread_info", {}).get("ratio", 1.0)
+
+        gates = 0
+        lines = []
+
+        if conf_score >= 2:
+            gates += 1; lines.append(f"Confluence: {conf_label} ({conf_score}/3) OK")
         else:
-            rr = "N/A"
+            lines.append(f"Confluence: WEAK ({conf_score}/3) FAIL")
+
+        if not counter_trend:
+            gates += 1; lines.append(f"Weekly: {weekly_bias} aligned OK")
+        else:
+            lines.append(f"Weekly: COUNTER-TREND FAIL")
+
+        if groups >= 3:
+            gates += 1; lines.append(f"Indicators: {groups}/5 groups OK")
+        else:
+            lines.append(f"Indicators: {groups}/5 groups FAIL")
+
+        if spread_ratio < 2.5:
+            gates += 1; lines.append(f"Spread: {spread_ratio:.1f}x normal OK")
+        else:
+            lines.append(f"Spread: {spread_ratio:.1f}x WIDE FAIL")
+
+        if confidence >= 65:
+            gates += 1; lines.append(f"Confidence: {confidence}% OK")
+        else:
+            lines.append(f"Confidence: {confidence}% marginal")
+
+        quality = "STRONG" if gates >= 5 else "GOOD" if gates >= 4 else "MARGINAL" if gates >= 3 else "WEAK"
+        gates_text = "
+".join(f"  {l}" for l in lines)
 
         msg = (
-            f"*{arrow} SIGNAL — {inst.replace('_', '/')}*\n"
-            f"H4 | {session} | "
-            f"{datetime.now(timezone.utc).strftime('%H:%M UTC')}\n"
-            f"---\n"
-            f"Entry:       `{sig.get('entry', '—')}`\n"
-            f"Stop Loss:   `{sig.get('sl', '—')}`\n"
-            f"Take Profit: `{sig.get('tp', '—')}`\n"
-            f"Size:        `{units:,} units`\n"
-            f"R:R Ratio:   `{rr}`\n"
-            f"Confidence:  `{confidence}%`\n"
-            f"---\n"
-            f"*AI ({ai.get('provider','GROQ').upper()}):* {ai_verdict}\n"
-            f"_{ai_summary}_\n"
-            f"---\n"
-            f"*Reply YES to execute trade*\n"
-            f"Reply NO to skip\n"
+            f"*{direction} — {inst.replace('_', '/')}*
+"
+            f"H4 | {session} | {datetime.now(timezone.utc).strftime('%H:%M UTC')}
+"
+            f"---
+"
+            f"Entry:      `{sig.get('entry','—')}`
+"
+            f"Stop Loss:  `{sig.get('sl','—')}`
+"
+            f"TP:         `{sig.get('tp','—')}`
+"
+            f"Size:       `{units:,} units`
+"
+            f"R:R:        `{rr}`
+"
+            f"---
+"
+            f"*QUALITY: {quality} ({gates}/5 gates)*
+"
+            f"{gates_text}
+"
+            f"---
+"
+            f"*AI:* {ai_verdict}
+"
+            f"_{ai_summary}_
+"
+            f"---
+"
+            f"*YES to execute | NO to skip*
+"
             f"_Expires: {expires}_"
         )
         return self.send(msg)
