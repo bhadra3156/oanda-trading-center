@@ -957,7 +957,7 @@ async function updatePulse() {
     // When EUR/USD rises, DXY falls and vice versa
     if (p.EUR_USD) {
       const eurusd  = p.EUR_USD.mid;
-      const dxyProxy = 1 / eurusd * 100; // normalised proxy
+      const dxyProxy = 1 / eurusd * 121; // DXY approximation
       const prevEur  = _pulsePrev.EUR_USD;
       const prevDxy  = prevEur ? 1/prevEur*100 : null;
       // DXY is INVERSE of EUR/USD direction
