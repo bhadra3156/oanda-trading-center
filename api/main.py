@@ -238,6 +238,15 @@ async def get_signals():
         except Exception as e:
             logger.error(f"Auto-trader signal processing error: {e}")
 
+        # Save daily account snapshot (once per scan)
+        try:
+            hour = datetime.utcnow().hour
+            if hour % 4 == 0:  # Save every 4 hours
+                summary = oanda.get_account_summary()
+                db.save_account_snapshot(summary)
+        except Exception as e:
+            logger.debug(f"Snapshot save skipped: {e}")
+
         return {"ok": True, "signals": results, "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -441,6 +450,27 @@ async def get_candles(instrument: str, granularity: str = "H4", count: int = 60)
     try:
         candles = oanda.get_candles(instrument, granularity=granularity, count=count)
         return {"ok": True, "candles": candles, "instrument": instrument}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── PERFORMANCE ──────────────────────────────────────────────────────────────
+@app.get("/api/performance")
+async def get_performance():
+    try:
+        stats = db.get_performance_stats()
+        # Add live account data
+        try:
+            acc   = oanda.get_account_summary()
+            pnl   = oanda.get_daily_pnl()
+            stats["live_balance"] = float(acc.get("balance", 0))
+            stats["live_nav"]     = float(acc.get("NAV", 0))
+            stats["live_upl"]     = float(acc.get("unrealizedPL", 0))
+            stats["daily_pnl"]    = pnl.get("daily_pnl", 0)
+            stats["open_trades"]  = int(acc.get("openTradeCount", 0))
+        except Exception:
+            pass
+        return {"ok": True, "stats": stats}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

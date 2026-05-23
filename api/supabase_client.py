@@ -81,6 +81,128 @@ class SupabaseClient:
         return self._request("POST", "account_snapshots", data)
 
     # ── JOURNAL STATS ─────────────────────────────────────────────────────────
+    # ── PERFORMANCE STATS ────────────────────────────────────────────────────
+    def get_performance_stats(self):
+        """Equity curve + performance metrics from account snapshots."""
+        snapshots = self._request(
+            "GET", "account_snapshots",
+            params="?order=created_at.asc&limit=500"
+        ) or []
+
+        signals = self._request(
+            "GET", "signals",
+            params="?order=created_at.asc&limit=1000"
+        ) or []
+
+        trades = self._request(
+            "GET", "trades",
+            params="?order=created_at.desc&limit=200"
+        ) or []
+
+        # Equity curve from snapshots
+        equity_curve = []
+        peak_balance = 0.0
+        for s in snapshots:
+            bal = float(s.get("balance", 0))
+            nav = float(s.get("nav", bal))
+            if nav > peak_balance:
+                peak_balance = nav
+            equity_curve.append({
+                "date":    s.get("created_at", "")[:10],
+                "balance": round(bal, 2),
+                "nav":     round(nav, 2),
+            })
+
+        # Current drawdown from peak
+        current_nav    = equity_curve[-1]["nav"] if equity_curve else 0
+        drawdown_pct   = round((peak_balance - current_nav) / peak_balance * 100, 2) if peak_balance > 0 else 0
+        drawdown_abs   = round(peak_balance - current_nav, 2)
+
+        # Monthly returns
+        monthly = {}
+        for s in snapshots:
+            month = s.get("created_at", "")[:7]
+            if month not in monthly:
+                monthly[month] = {"start": float(s.get("balance", 0)), "end": float(s.get("balance", 0))}
+            monthly[month]["end"] = float(s.get("balance", 0))
+
+        monthly_returns = []
+        for month, d in sorted(monthly.items()):
+            if d["start"] > 0:
+                ret = round((d["end"] - d["start"]) / d["start"] * 100, 2)
+                monthly_returns.append({"month": month, "return_pct": ret,
+                                        "start": d["start"], "end": d["end"]})
+
+        # Starting balance (first snapshot or fallback)
+        starting_balance = equity_curve[0]["balance"] if equity_curve else 627.0
+        target_balance   = 4000.0
+
+        # Progress to target
+        progress_pct = round((current_nav - starting_balance) / (target_balance - starting_balance) * 100, 1) if target_balance > starting_balance else 0
+        progress_pct = max(0, min(100, progress_pct))
+
+        # Project target date based on avg monthly return
+        avg_monthly_ret = 0.0
+        if monthly_returns:
+            avg_monthly_ret = sum(m["return_pct"] for m in monthly_returns) / len(monthly_returns)
+
+        projected_months = None
+        if avg_monthly_ret > 0 and current_nav < target_balance:
+            import math
+            projected_months = math.ceil(math.log(target_balance / current_nav) / math.log(1 + avg_monthly_ret / 100))
+
+        # Signal accuracy per instrument
+        inst_accuracy = {}
+        for s in signals:
+            inst = s.get("instrument", "")
+            if inst not in inst_accuracy:
+                inst_accuracy[inst] = {"signals": 0, "high_conf": 0, "avg_conf": []}
+            inst_accuracy[inst]["signals"] += 1
+            conf = float(s.get("confidence", 0))
+            inst_accuracy[inst]["avg_conf"].append(conf)
+            if conf >= 65:
+                inst_accuracy[inst]["high_conf"] += 1
+
+        for inst in inst_accuracy:
+            confs = inst_accuracy[inst]["avg_conf"]
+            inst_accuracy[inst]["avg_confidence"] = round(sum(confs)/len(confs), 1) if confs else 0
+            del inst_accuracy[inst]["avg_conf"]
+
+        # Consistency score (0-100)
+        # Based on: % signals above 65% confidence, session distribution
+        total_sigs    = len(signals)
+        high_conf_sigs= sum(1 for s in signals if float(s.get("confidence",0)) >= 65)
+        consistency   = round(high_conf_sigs / total_sigs * 100, 1) if total_sigs > 0 else 0
+
+        # Sharpe ratio (simplified — using closed trades)
+        closed = [t for t in trades if t.get("pnl") is not None]
+        sharpe = None
+        if len(closed) >= 5:
+            pnls = [float(t.get("pnl", 0)) for t in closed]
+            avg  = sum(pnls) / len(pnls)
+            variance = sum((p - avg)**2 for p in pnls) / len(pnls)
+            std  = variance ** 0.5
+            sharpe = round(avg / std, 2) if std > 0 else None
+
+        return {
+            "equity_curve":       equity_curve,
+            "peak_balance":       round(peak_balance, 2),
+            "current_nav":        round(current_nav, 2),
+            "starting_balance":   round(starting_balance, 2),
+            "drawdown_pct":       drawdown_pct,
+            "drawdown_abs":       drawdown_abs,
+            "monthly_returns":    monthly_returns,
+            "avg_monthly_return": round(avg_monthly_ret, 2),
+            "target_balance":     target_balance,
+            "progress_pct":       progress_pct,
+            "projected_months":   projected_months,
+            "inst_accuracy":      inst_accuracy,
+            "consistency_score":  consistency,
+            "sharpe_ratio":       sharpe,
+            "total_signals":      total_sigs,
+            "snapshots_count":    len(snapshots),
+        }
+
     def get_journal_stats(self):
         """
         FIX: Query signals table (not trades table).

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Performance — Oanda Trading Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#080b0f;--bg2:#0d1117;--bg3:#131920;--bg4:#1a2230;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.1);
+  --text:#e6edf3;--muted:#7d8590;--muted2:#a0aab4;
+  --green:#3fb950;--gdim:rgba(63,185,80,0.12);
+  --red:#f85149;--rdim:rgba(248,81,73,0.12);
+  --gold:#d29922;--ydim:rgba(210,153,34,0.12);
+  --blue:#388bfd;--bdim:rgba(56,139,253,0.12);
+  --cyan:#39c5cf;--cdim:rgba(57,197,207,0.12);
+  --purple:#bc8cff;--pdim:rgba(188,140,255,0.12);
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(56,139,253,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(56,139,253,0.02) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+
+nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;position:sticky;top:0;z-index:100}
+.nav-logo{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:0.1em;display:flex;align-items:center;gap:10px}
+.nav-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.nav-links{display:flex;gap:0.25rem}
+.nav-link{font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:6px;transition:all 0.15s;border:1px solid transparent}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,0.04)}
+.nav-link.active{color:var(--text);background:var(--bdim);border-color:rgba(56,139,253,0.2)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-bal{font-family:var(--mono);font-size:12px;color:var(--muted2)}
+.nav-bal span{color:var(--green);font-weight:600}
+.env-badge{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:0.1em;text-transform:uppercase;background:var(--rdim);color:var(--red);border:1px solid rgba(248,81,73,0.2)}
+
+.main{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:1.5rem 2rem}
+
+/* PAGE HEADER */
+.page-hdr{margin-bottom:1.5rem;display:flex;align-items:flex-end;justify-content:space-between}
+.page-title{font-size:1.4rem;font-weight:700;letter-spacing:-0.02em}
+.page-sub{font-size:12px;color:var(--muted);font-family:var(--mono);margin-top:4px}
+
+/* STAT STRIP */
+.stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:1.5rem}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac,transparent)}
+.stat-card.g{--ac:var(--green)}.stat-card.r{--ac:var(--red)}.stat-card.b{--ac:var(--blue)}.stat-card.gold{--ac:var(--gold)}.stat-card.c{--ac:var(--cyan)}.stat-card.p{--ac:var(--purple)}
+.stat-lbl{font-size:9px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.stat-val{font-size:1.25rem;font-weight:700;font-family:var(--mono);letter-spacing:-0.01em}
+.stat-val.g{color:var(--green)}.stat-val.r{color:var(--red)}.stat-val.b{color:var(--blue)}.stat-val.gold{color:var(--gold)}.stat-val.c{color:var(--cyan)}.stat-val.p{color:var(--purple)}
+.stat-sub{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:4px}
+
+/* SEC HEADER */
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.sec-title{font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.sec-title::before{content:'';display:inline-block;width:3px;height:14px;background:var(--blue);border-radius:2px}
+
+/* TARGET PROGRESS */
+.target-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+.target-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),var(--cyan),var(--blue))}
+.target-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem}
+.target-title{font-size:13px;font-weight:700;color:var(--muted2);margin-bottom:4px}
+.target-amounts{display:flex;align-items:baseline;gap:8px}
+.target-current{font-size:2rem;font-weight:800;font-family:var(--mono);color:var(--green);letter-spacing:-0.02em}
+.target-sep{color:var(--muted);font-size:1.2rem}
+.target-goal{font-size:1.1rem;font-weight:700;font-family:var(--mono);color:var(--muted2)}
+.target-right{text-align:right}
+.target-pct{font-size:1.5rem;font-weight:800;font-family:var(--mono);color:var(--cyan)}
+.target-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.target-bar-wrap{margin-bottom:1rem}
+.target-bar-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:6px}
+.target-bar{height:10px;background:var(--bg4);border-radius:5px;overflow:hidden;position:relative}
+.target-bar-fill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--green),var(--cyan));transition:width 1.5s ease;position:relative}
+.target-bar-fill::after{content:'';position:absolute;right:0;top:-3px;width:16px;height:16px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.target-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.target-meta-item{background:var(--bg3);border-radius:8px;padding:10px 12px}
+.target-meta-lbl{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.target-meta-val{font-size:13px;font-weight:700;font-family:var(--mono)}
+
+/* CHART PANEL */
+.chart-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem;overflow:hidden;margin-bottom:1.5rem}
+.chart-panel-title{font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between}
+.chart-wrap{position:relative}
+.chart-wrap.h200{height:200px}
+.chart-wrap.h260{height:260px}
+.chart-wrap.h180{height:180px}
+
+/* TWO / THREE COL */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+
+/* DRAWDOWN PANEL */
+.drawdown-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.5rem}
+.dd-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.dd-val{font-size:2rem;font-weight:800;font-family:var(--mono)}
+.dd-bar{height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;margin-bottom:8px}
+.dd-bar-fill{height:100%;border-radius:4px;transition:width 1s ease}
+.dd-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+/* MONTHLY RETURNS */
+.monthly-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:1.5rem}
+.month-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center;position:relative;overflow:hidden}
+.month-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px}
+.month-card.pos::after{background:var(--green)}
+.month-card.neg::after{background:var(--red)}
+.month-card.neu::after{background:var(--border)}
+.month-name{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.month-ret{font-size:1.1rem;font-weight:800;font-family:var(--mono)}
+.month-ret.pos{color:var(--green)}.month-ret.neg{color:var(--red)}.month-ret.neu{color:var(--muted)}
+.month-abs{font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+
+/* CONSISTENCY SCORE */
+.consistency-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem;display:flex;align-items:center;gap:2rem;margin-bottom:1.5rem}
+.consistency-ring{position:relative;flex-shrink:0}
+.consistency-ring canvas{display:block}
+.consistency-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.consistency-score{font-size:1.5rem;font-weight:800;font-family:var(--mono)}
+.consistency-label{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)}
+.consistency-detail{flex:1}
+.consistency-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.consistency-body{font-size:12px;color:var(--muted2);line-height:1.7}
+.consistency-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:1rem}
+.cs-stat{background:var(--bg3);border-radius:6px;padding:8px 10px}
+.cs-stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:2px}
+.cs-stat-val{font-size:12px;font-weight:700;font-family:var(--mono)}
+
+/* INSTRUMENT TABLE */
+.inst-table-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:1.5rem}
+table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+th{text-align:left;padding:10px 14px;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,0.015)}
+.td-inst{font-weight:700;color:var(--gold)}
+.td-bar{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;width:80px}
+.td-bar-fill{height:100%;border-radius:2px}
+
+/* NO DATA */
+.no-data-panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:3rem;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px;margin-bottom:1.5rem}
+.no-data-panel .icon{font-size:2rem;margin-bottom:0.75rem}
+.no-data-panel .msg{color:var(--muted2);margin-bottom:0.5rem}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.15);border-top-color:var(--blue);border-radius:50%;animation:sp 0.7s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media(max-width:1000px){
+  .stat-strip{grid-template-columns:repeat(3,1fr)}
+  .two-col,.three-col{grid-template-columns:1fr}
+  .monthly-grid{grid-template-columns:repeat(3,1fr)}
+  .target-meta{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo"><div class="nav-dot"></div>OANDA TRADING CENTER</div>
+  <div class="nav-links">
+    <a href="index.html"        class="nav-link">Dashboard</a>
+    <a href="calculator.html"   class="nav-link">Calculator</a>
+    <a href="positions.html"    class="nav-link">Positions</a>
+    <a href="journal.html"      class="nav-link">Journal</a>
+    <a href="performance.html"  class="nav-link active">Performance</a>
+    <a href="risk.html"         class="nav-link">Risk</a>
+    <a href="correlation.html"  class="nav-link">Correlation</a>
+  </div>
+  <div class="nav-right">
+    <div class="nav-bal">Balance: <span id="nav-bal">—</span></div>
+    <div class="env-badge">LIVE</div>
+  </div>
+</nav>
+
+<div class="main">
+
+  <!-- PAGE HEADER -->
+  <div class="page-hdr">
+    <div>
+      <div class="page-title">Performance Tracker</div>
+      <div class="page-sub">Equity curve · Growth target · Drawdown · Consistency · Edge measurement</div>
+    </div>
+    <div style="font-size:11px;font-family:var(--mono);color:var(--muted)" id="last-updated">Loading...</div>
+  </div>
+
+  <!-- STAT STRIP -->
+  <div class="stat-strip">
+    <div class="stat-card g"><div class="stat-lbl">Live Balance</div><div class="stat-val g" id="s-bal">—</div><div class="stat-sub" id="s-nav">NAV: —</div></div>
+    <div class="stat-card b"><div class="stat-lbl">Starting Balance</div><div class="stat-val b" id="s-start">—</div><div class="stat-sub">First recorded</div></div>
+    <div class="stat-card gold"><div class="stat-lbl">Total Return</div><div class="stat-val" id="s-ret">—</div><div class="stat-sub" id="s-ret-abs">since start</div></div>
+    <div class="stat-card r"><div class="stat-lbl">Max Drawdown</div><div class="stat-val r" id="s-dd">—</div><div class="stat-sub" id="s-dd-abs">from peak</div></div>
+    <div class="stat-card c"><div class="stat-lbl">Consistency Score</div><div class="stat-val c" id="s-cons">—</div><div class="stat-sub">Signal quality %</div></div>
+    <div class="stat-card p"><div class="stat-lbl">Sharpe Ratio</div><div class="stat-val p" id="s-sharpe">—</div><div class="stat-sub">Risk-adjusted return</div></div>
+  </div>
+
+  <!-- TARGET PROGRESS -->
+  <div class="sec-hdr"><div class="sec-title">Account Growth Target — £4,000</div></div>
+  <div class="target-panel">
+    <div class="target-top">
+      <div>
+        <div class="target-title">Progress to Target</div>
+        <div class="target-amounts">
+          <span class="target-current" id="t-current">—</span>
+          <span class="target-sep">/</span>
+          <span class="target-goal">£4,000</span>
+        </div>
+      </div>
+      <div class="target-right">
+        <div class="target-pct" id="t-pct">—%</div>
+        <div class="target-sub" id="t-proj">— months to target</div>
+      </div>
+    </div>
+    <div class="target-bar-wrap">
+      <div class="target-bar-labels">
+        <span id="t-start-lbl">Start</span>
+        <span style="color:var(--cyan)" id="t-pct-lbl">0%</span>
+        <span style="color:var(--gold)">£4,000 target</span>
+      </div>
+      <div class="target-bar">
+        <div class="target-bar-fill" id="t-bar" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="target-meta">
+      <div class="target-meta-item">
+        <div class="target-meta-lbl">Avg Monthly Return</div>
+        <div class="target-meta-val" id="t-monthly-avg">—</div>
+      </div>
+      <div class="target-meta-item">
+        <div class="target-meta-lbl">Target Monthly</div>
+        <div class="target-meta-val" style="color:var(--gold)">35–40%</div>
+      </div>
+      <div class="target-meta-item">
+        <div class="target-meta-lbl">Remaining</div>
+        <div class="target-meta-val" id="t-remaining">—</div>
+      </div>
+      <div class="target-meta-item">
+        <div class="target-meta-lbl">Projected Date</div>
+        <div class="target-meta-val" id="t-date">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EQUITY CURVE -->
+  <div class="sec-hdr"><div class="sec-title">Equity Curve</div></div>
+  <div class="chart-panel">
+    <div class="chart-panel-title">
+      <span>Account Balance Over Time</span>
+      <span id="equity-note" style="font-size:10px;color:var(--muted)">—</span>
+    </div>
+    <div class="chart-wrap h260"><canvas id="chart-equity"></canvas></div>
+  </div>
+
+  <!-- DRAWDOWN + MONTHLY RETURNS -->
+  <div class="two-col">
+    <!-- Drawdown -->
+    <div>
+      <div class="sec-hdr"><div class="sec-title">Current Drawdown from Peak</div></div>
+      <div class="drawdown-panel">
+        <div class="dd-top">
+          <div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Drawdown</div>
+            <div class="dd-val" id="dd-pct">—%</div>
+            <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:4px" id="dd-abs">—</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Peak NAV</div>
+            <div style="font-size:1.1rem;font-weight:700;font-family:var(--mono);color:var(--muted2)" id="dd-peak">—</div>
+          </div>
+        </div>
+        <div class="dd-bar">
+          <div class="dd-bar-fill" id="dd-bar" style="width:0%;background:var(--green)"></div>
+        </div>
+        <div class="dd-labels">
+          <span>0%</span>
+          <span style="color:var(--gold)">10% warn</span>
+          <span style="color:var(--red)">15% lockout</span>
+        </div>
+        <div style="margin-top:1rem;padding:10px;background:var(--bg3);border-radius:8px;font-size:11px;color:var(--muted2);line-height:1.6" id="dd-status">
+          Loading drawdown status...
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly returns chart -->
+    <div>
+      <div class="sec-hdr"><div class="sec-title">Monthly Returns</div></div>
+      <div class="chart-panel" style="margin-bottom:0">
+        <div class="chart-wrap h200"><canvas id="chart-monthly"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONTHLY CARDS -->
+  <div class="sec-hdr"><div class="sec-title">Monthly Breakdown</div></div>
+  <div class="monthly-grid" id="monthly-grid">
+    <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);font-size:12px"><span class="spin"></span> Loading...</div>
+  </div>
+
+  <!-- CONSISTENCY SCORE -->
+  <div class="sec-hdr"><div class="sec-title">System Consistency Score</div></div>
+  <div class="consistency-panel">
+    <div class="consistency-ring">
+      <canvas id="chart-consistency" width="140" height="140"></canvas>
+      <div class="consistency-center">
+        <div class="consistency-score" id="cons-score">—</div>
+        <div class="consistency-label">/ 100</div>
+      </div>
+    </div>
+    <div class="consistency-detail">
+      <div class="consistency-title" id="cons-title">System Consistency</div>
+      <div class="consistency-body" id="cons-body">Loading...</div>
+      <div class="consistency-stats">
+        <div class="cs-stat">
+          <div class="cs-stat-lbl">Total Signals</div>
+          <div class="cs-stat-val" id="cons-total">—</div>
+        </div>
+        <div class="cs-stat">
+          <div class="cs-stat-lbl">High Conf (65%+)</div>
+          <div class="cs-stat-val" id="cons-high">—</div>
+        </div>
+        <div class="cs-stat">
+          <div class="cs-stat-lbl">Avg Monthly Target</div>
+          <div class="cs-stat-val" style="color:var(--gold)">35–40%</div>
+        </div>
+        <div class="cs-stat">
+          <div class="cs-stat-lbl">Sharpe Ratio</div>
+          <div class="cs-stat-val" id="cons-sharpe">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSTRUMENT SIGNAL ACCURACY -->
+  <div class="sec-hdr"><div class="sec-title">Signal Accuracy by Instrument</div></div>
+  <div class="inst-table-panel">
+    <table>
+      <thead><tr>
+        <th>Instrument</th>
+        <th>Signals</th>
+        <th>High Conf (65%+)</th>
+        <th>Avg Confidence</th>
+        <th>Quality Bar</th>
+        <th>Rating</th>
+      </tr></thead>
+      <tbody id="inst-tbody">
+        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)"><span class="spin"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+const API = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
+  ? 'http://localhost:8000'
+  : 'https://oanda-trading-center.onrender.com';
+
+function fmt(n,d=2){
+  if(n===null||n===undefined||n==='')return '—';
+  return Number(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function fmtPct(n){
+  if(n===null||n===undefined)return '—';
+  const v = Number(n);
+  return (v>=0?'+':'')+v.toFixed(2)+'%';
+}
+
+async function loadPerformance(){
+  try{
+    const [perfR, accR] = await Promise.all([
+      fetch(`${API}/api/performance`),
+      fetch(`${API}/api/account`),
+    ]);
+    const perfD = await perfR.json();
+    const accD  = await accR.json();
+
+    if(!perfD.ok) throw new Error('Performance load failed');
+    const s = perfD.stats;
+
+    // Live balance
+    const liveBal = s.live_balance || s.current_nav || 0;
+    const liveNav = s.live_nav    || liveBal;
+    document.getElementById('nav-bal').textContent     = '£'+fmt(liveBal);
+    document.getElementById('s-bal').textContent       = '£'+fmt(liveBal);
+    document.getElementById('s-nav').textContent       = 'NAV: £'+fmt(liveNav);
+    document.getElementById('s-start').textContent     = '£'+fmt(s.starting_balance||627);
+    document.getElementById('last-updated').textContent= 'Updated '+new Date().toUTCString().split(' ')[4]+' UTC';
+
+    // Total return
+    const totalRet = s.starting_balance>0
+      ? ((liveBal - s.starting_balance)/s.starting_balance*100)
+      : 0;
+    const retEl = document.getElementById('s-ret');
+    retEl.textContent = fmtPct(totalRet);
+    retEl.className   = `stat-val ${totalRet>=0?'g':'r'}`;
+    document.getElementById('s-ret-abs').textContent =
+      (liveBal-s.starting_balance>=0?'+':'')+' £'+fmt(Math.abs(liveBal-s.starting_balance));
+
+    // Drawdown
+    const dd = s.drawdown_pct||0;
+    document.getElementById('s-dd').textContent    = dd.toFixed(2)+'%';
+    document.getElementById('dd-pct').textContent  = dd.toFixed(2)+'%';
+    document.getElementById('dd-abs').textContent  = '£'+fmt(s.drawdown_abs||0)+' from peak';
+    document.getElementById('dd-peak').textContent = '£'+fmt(s.peak_balance||liveBal);
+    const ddEl = document.getElementById('dd-pct');
+    ddEl.style.color = dd>15?'var(--red)':dd>10?'var(--gold)':'var(--green)';
+    const ddBar = document.getElementById('dd-bar');
+    ddBar.style.width  = Math.min(100,dd/15*100)+'%';
+    ddBar.style.background = dd>15?'var(--red)':dd>10?'var(--gold)':'var(--green)';
+    document.getElementById('dd-status').textContent =
+      dd<=0   ? 'Account at or above peak equity. No drawdown.' :
+      dd<=5   ? `Mild drawdown of ${dd.toFixed(1)}%. Within acceptable range. Continue trading normally.` :
+      dd<=10  ? `Moderate drawdown of ${dd.toFixed(1)}%. Consider reducing position sizes until recovered.` :
+      dd<=15  ? `Significant drawdown of ${dd.toFixed(1)}%. Approaching weekly warning limit. Review open positions.` :
+                `Critical drawdown of ${dd.toFixed(1)}%. Weekly lockout threshold exceeded. Consider pausing trading.`;
+
+    // Consistency + Sharpe
+    const cons = s.consistency_score||0;
+    document.getElementById('s-cons').textContent   = cons.toFixed(1)+'%';
+    document.getElementById('s-sharpe').textContent = s.sharpe_ratio!=null ? s.sharpe_ratio.toFixed(2) : 'N/A';
+    document.getElementById('cons-score').textContent= cons.toFixed(0);
+    document.getElementById('cons-sharpe').textContent= s.sharpe_ratio!=null ? s.sharpe_ratio.toFixed(2) : 'N/A';
+    document.getElementById('cons-total').textContent = s.total_signals||0;
+    const highConf = Math.round((cons/100)*(s.total_signals||0));
+    document.getElementById('cons-high').textContent = highConf;
+    document.getElementById('cons-title').textContent =
+      cons>=70?'Excellent Signal Quality':cons>=50?'Good Signal Quality':'Developing — Build Consistency';
+    document.getElementById('cons-body').textContent =
+      cons>=70 ? `${cons.toFixed(1)}% of your signals meet the 65%+ confidence threshold. Your system is generating high-quality setups consistently. This level of signal quality supports the 35-40% monthly target.` :
+      cons>=50 ? `${cons.toFixed(1)}% of signals are high confidence. Good foundation. Focus on trading only 65%+ signals to improve edge quality further.` :
+                 `${cons.toFixed(1)}% high confidence rate. Signal quality building. The system is learning current market conditions. Be selective — only take 65%+ signals manually for now.`;
+
+    // Target progress
+    const prog = s.progress_pct||0;
+    const remaining = 4000 - liveBal;
+    document.getElementById('t-current').textContent = '£'+fmt(liveBal);
+    document.getElementById('t-pct').textContent     = prog.toFixed(1)+'%';
+    document.getElementById('t-pct-lbl').textContent = prog.toFixed(1)+'%';
+    document.getElementById('t-start-lbl').textContent = '£'+fmt(s.starting_balance||627);
+    document.getElementById('t-remaining').textContent  = '£'+fmt(Math.max(0,remaining));
+    document.getElementById('t-monthly-avg').textContent= fmtPct(s.avg_monthly_return||0);
+    document.getElementById('t-bar').style.width = Math.min(100,prog)+'%';
+
+    if(s.projected_months && s.projected_months>0){
+      const projDate = new Date();
+      projDate.setMonth(projDate.getMonth()+s.projected_months);
+      document.getElementById('t-proj').textContent =
+        `~${s.projected_months} months to target`;
+      document.getElementById('t-date').textContent =
+        projDate.toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+    } else if(liveBal >= 4000){
+      document.getElementById('t-proj').textContent = 'TARGET REACHED!';
+      document.getElementById('t-date').textContent = 'Achieved';
+    } else {
+      document.getElementById('t-proj').textContent = 'Set monthly return to project';
+      document.getElementById('t-date').textContent = '—';
+    }
+
+    // Charts
+    renderEquityCurve(s.equity_curve||[], liveBal);
+    renderMonthlyChart(s.monthly_returns||[]);
+    renderMonthlyCards(s.monthly_returns||[]);
+    renderConsistencyRing(cons);
+    renderInstrumentTable(s.inst_accuracy||{});
+
+  } catch(e){
+    console.error('Performance load error:', e);
+    document.getElementById('last-updated').textContent = 'Error: '+e.message;
+  }
+}
+
+// ── EQUITY CURVE CHART ────────────────────────────────────────────────────────
+function renderEquityCurve(curve, liveBal){
+  const ctx = document.getElementById('chart-equity');
+  if(!ctx) return;
+
+  let labels, data;
+
+  if(curve.length >= 2){
+    // Use actual snapshot data
+    const byDate = {};
+    curve.forEach(c=>{ byDate[c.date] = c.nav||c.balance; });
+    labels = Object.keys(byDate).sort();
+    data   = labels.map(d=>byDate[d]);
+    document.getElementById('equity-note').textContent =
+      `${curve.length} data points from Supabase`;
+  } else {
+    // Synthetic curve — show starting balance to current
+    const start = 627;
+    const now   = new Date();
+    labels = [];
+    data   = [];
+    for(let i=6;i>=0;i--){
+      const d = new Date(now); d.setDate(d.getDate()-i);
+      labels.push(d.toISOString().split('T')[0]);
+    }
+    // Linear interpolation
+    data = labels.map((_,i)=>
+      start + (liveBal - start) * (i/(labels.length-1))
+    );
+    document.getElementById('equity-note').textContent =
+      'Estimated — snapshots saving from next scan';
+  }
+
+  const startVal = data[0]||627;
+  const isPos    = (data[data.length-1]||liveBal) >= startVal;
+
+  new Chart(ctx,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        label:'Balance',
+        data,
+        borderColor:   isPos ? '#3fb950' : '#f85149',
+        borderWidth:   2,
+        fill:          true,
+        backgroundColor: isPos
+          ? 'rgba(63,185,80,0.08)'
+          : 'rgba(248,81,73,0.08)',
+        tension:      0.3,
+        pointRadius:  data.length>30?0:3,
+        pointBackgroundColor: isPos?'#3fb950':'#f85149',
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label: ctx=>'£'+Number(ctx.raw).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#7d8590',font:{size:9},maxTicksLimit:8},grid:{color:'rgba(255,255,255,0.03)'}},
+        y:{
+          ticks:{color:'#7d8590',font:{size:9},callback:v=>'£'+Number(v).toFixed(0)},
+          grid:{color:'rgba(255,255,255,0.03)'},
+        }
+      }
+    }
+  });
+}
+
+// ── MONTHLY RETURNS CHART ─────────────────────────────────────────────────────
+function renderMonthlyChart(monthly){
+  const ctx = document.getElementById('chart-monthly');
+  if(!ctx) return;
+  if(monthly.length===0){
+    ctx.parentElement.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-size:12px">No monthly data yet</div>';
+    return;
+  }
+  const colors = monthly.map(m=>m.return_pct>=0?'rgba(63,185,80,0.8)':'rgba(248,81,73,0.8)');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: monthly.map(m=>m.month.slice(5)),
+      datasets:[{
+        label:'Monthly Return %',
+        data:  monthly.map(m=>m.return_pct),
+        backgroundColor: colors,
+        borderRadius: 4,
+      },{
+        label:'Target 35%',
+        data:  monthly.map(()=>35),
+        type:  'line',
+        borderColor:   'rgba(210,153,34,0.5)',
+        borderWidth:   1,
+        borderDash:    [4,4],
+        pointRadius:   0,
+        fill:          false,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#7d8590',font:{size:10},boxWidth:10}}},
+      scales:{
+        x:{ticks:{color:'#7d8590',font:{size:9}},grid:{color:'rgba(255,255,255,0.03)'}},
+        y:{ticks:{color:'#7d8590',font:{size:9},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.03)'},beginAtZero:true},
+      }
+    }
+  });
+}
+
+// ── MONTHLY CARDS ─────────────────────────────────────────────────────────────
+function renderMonthlyCards(monthly){
+  const grid = document.getElementById('monthly-grid');
+  if(monthly.length===0){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);font-size:12px">Monthly data builds up over time as account snapshots are saved. Check back next month.</div>';
+    return;
+  }
+  grid.innerHTML = monthly.map(m=>{
+    const cls = m.return_pct>0?'pos':m.return_pct<0?'neg':'neu';
+    const monthName = new Date(m.month+'-01').toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
+    return `<div class="month-card ${cls}">
+      <div class="month-name">${monthName}</div>
+      <div class="month-ret ${cls}">${m.return_pct>=0?'+':''}${m.return_pct.toFixed(1)}%</div>
+      <div class="month-abs">${m.return_pct>=0?'+':''}£${Math.abs(m.end-m.start).toFixed(2)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── CONSISTENCY RING ──────────────────────────────────────────────────────────
+function renderConsistencyRing(score){
+  const ctx = document.getElementById('chart-consistency');
+  if(!ctx) return;
+  const color = score>=70?'#3fb950':score>=50?'#d29922':'#f85149';
+  new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      datasets:[{
+        data:[score, 100-score],
+        backgroundColor:[color,'rgba(255,255,255,0.05)'],
+        borderWidth:0,
+        hoverOffset:0,
+      }]
+    },
+    options:{
+      responsive:false, cutout:'72%',
+      plugins:{legend:{display:false},tooltip:{enabled:false}},
+      animation:{duration:1500,easing:'easeOutQuart'},
+    }
+  });
+  document.getElementById('cons-score').style.color = color;
+}
+
+// ── INSTRUMENT TABLE ──────────────────────────────────────────────────────────
+function renderInstrumentTable(instData){
+  const tbody = document.getElementById('inst-tbody');
+  const entries = Object.entries(instData).sort((a,b)=>b[1].signals-a[1].signals);
+
+  if(entries.length===0){
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--muted)">No instrument data yet</td></tr>';
+    return;
+  }
+
+  const maxSig = Math.max(...entries.map(([,d])=>d.signals),1);
+  const maxHigh= Math.max(...entries.map(([,d])=>d.high_conf||0),1);
+
+  tbody.innerHTML = entries.map(([inst,d])=>{
+    const name    = inst.replace('_','/');
+    const conf    = d.avg_confidence||0;
+    const highPct = d.signals>0 ? Math.round((d.high_conf||0)/d.signals*100) : 0;
+    const barPct  = Math.round((d.high_conf||0)/maxHigh*100);
+    const rating  = conf>=70?{t:'STRONG',c:'var(--green)'}:conf>=60?{t:'GOOD',c:'var(--cyan)'}:conf>=50?{t:'MODERATE',c:'var(--gold)'}:{t:'WEAK',c:'var(--red)'};
+    const barColor= conf>=65?'var(--green)':conf>=55?'var(--gold)':'var(--red)';
+    return `<tr>
+      <td class="td-inst">${name}</td>
+      <td>${d.signals}</td>
+      <td>${d.high_conf||0} <span style="color:var(--muted);font-size:10px">(${highPct}%)</span></td>
+      <td style="color:${conf>=65?'var(--green)':conf>=55?'var(--gold)':'var(--red)'}">${conf.toFixed(1)}%</td>
+      <td><div class="td-bar"><div class="td-bar-fill" style="width:${barPct}%;background:${barColor}"></div></div></td>
+      <td style="color:${rating.c};font-weight:700;font-size:10px">${rating.t}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadPerformance();
+</script>
+</body>
+</html>
