@@ -145,6 +145,19 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
   .two-col,.inst-results{grid-template-columns:1fr}
   .control-grid{grid-template-columns:1fr}
 }
+
+/* MOBILE BOTTOM NAV */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(8,11,15,0.98);border-top:1px solid var(--border);z-index:200;backdrop-filter:blur(20px)}
+.mobile-nav-items{display:flex;height:100%}
+.mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-decoration:none;color:var(--muted);gap:3px;transition:all 0.15s}
+.mobile-nav-item.active{color:var(--blue)}
+.mobile-nav-item:hover{color:var(--text)}
+.mobile-nav-icon{font-size:18px;line-height:1}
+.mobile-nav-label{font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase}
+@media(max-width:768px){
+  .mobile-nav{display:flex}
+  body{padding-bottom:60px}
+}
 </style>
 </head>
 <body>
@@ -802,5 +815,31 @@ function exportTradeLog(){
 // ── INIT ──────────────────────────────────────────────────────────────────────
 buildSelector();
 </script>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-items">
+    <a href="index.html" class="mobile-nav-item ">
+      <span class="mobile-nav-icon">📊</span>
+      <span class="mobile-nav-label">Signals</span>
+    </a>
+    <a href="positions.html" class="mobile-nav-item ">
+      <span class="mobile-nav-icon">📈</span>
+      <span class="mobile-nav-label">Positions</span>
+    </a>
+    <a href="backtest.html" class="mobile-nav-item active">
+      <span class="mobile-nav-icon">📉</span>
+      <span class="mobile-nav-label">Backtest</span>
+    </a>
+    <a href="journal.html" class="mobile-nav-item ">
+      <span class="mobile-nav-icon">📓</span>
+      <span class="mobile-nav-label">Journal</span>
+    </a>
+    <a href="performance.html" class="mobile-nav-item ">
+      <span class="mobile-nav-icon">🎯</span>
+      <span class="mobile-nav-label">Performance</span>
+    </a>
+  </div>
+</nav>
 </body>
 </html>

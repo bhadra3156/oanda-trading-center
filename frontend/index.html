@@ -239,6 +239,29 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .chat-send:hover{background:#1a6fd8}
 .chat-send:disabled{opacity:0.4;cursor:not-allowed}
 
+.sc-tv-link{display:block;text-align:center;font-size:9px;color:var(--muted);text-decoration:none;margin-top:4px;padding:2px;transition:color 0.15s;font-family:var(--mono)}
+.sc-tv-link:hover{color:var(--blue)}
+
+/* HIDE WAIT TOGGLE */
+.sig-filter-btn{font-size:10px;font-weight:700;padding:4px 12px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--muted2);cursor:pointer;font-family:var(--font);transition:all 0.15s;letter-spacing:0.04em}
+.sig-filter-btn.active{border-color:var(--blue);color:var(--blue);background:var(--bdim)}
+.scard.hidden{display:none}
+
+/* MOBILE BOTTOM NAV */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(8,11,15,0.98);border-top:1px solid var(--border);z-index:200;backdrop-filter:blur(20px)}
+.mobile-nav-items{display:flex;height:100%}
+.mobile-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-decoration:none;color:var(--muted);gap:3px;transition:all 0.15s;border:none;background:transparent;cursor:pointer}
+.mobile-nav-item.active{color:var(--blue)}
+.mobile-nav-item:hover{color:var(--text)}
+.mobile-nav-icon{font-size:18px;line-height:1}
+.mobile-nav-label{font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase}
+@media(max-width:768px){
+  .mobile-nav{display:flex}
+  body{padding-bottom:60px}
+  .chat-toggle{bottom:5rem}
+  .chat-panel{bottom:5.5rem}
+}
+
 /* LOADING SKELETON */
 .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;height:12px;margin-bottom:6px}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
@@ -415,7 +438,10 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
   <!-- SIGNALS -->
   <div class="sec-hdr">
     <div class="sec-title"> H4 AI Signals &mdash; GROQ + Claude AI</div>
-    <div class="sec-badge gold" id="sig-summary">Scanning 8 instruments...</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="sig-filter-btn" id="filter-btn" onclick="toggleWaitFilter()">Active Only</button>
+      <div class="sec-badge gold" id="sig-summary">Scanning 8 instruments...</div>
+    </div>
   </div>
   <div class="sig-grid" id="sig-grid">
     <!-- Loading skeletons -->
@@ -842,16 +868,29 @@ function renderSignals(signals, account){
     const     // Build calculator URL — all signal params pre-filled
     const calcUrl = `calculator.html?instrument=${inst.id}&direction=${s.signal}&entry=${s.entry||''}&sl=${s.sl||''}&tp=${s.tp||''}&units=${units}&confidence=${s.confidence||0}`;
 
+    // TradingView deep link
+    const tvSymbol = inst.id.replace('_','').replace('USD','').replace('GBP','');
+    const tvUrl    = `https://www.tradingview.com/chart/?symbol=OANDA:${inst.id.replace('_','')}&interval=240`;
+
     tradeHtml = isBuy && s.entry ? `
       <a href="${calcUrl}" class="sc-trade buy" style="text-decoration:none;display:block;text-align:center">
         TRADE THIS &rarr;&nbsp; ${inst.name} BUY
+      </a>
+      <a href="${tvUrl}" target="_blank" class="sc-tv-link">
+        Open in TradingView &nearr;
       </a>` : isSell && s.entry ? `
       <a href="${calcUrl}" class="sc-trade sell" style="text-decoration:none;display:block;text-align:center">
         TRADE THIS &rarr;&nbsp; ${inst.name} SELL
+      </a>
+      <a href="${tvUrl}" target="_blank" class="sc-tv-link">
+        Open in TradingView &nearr;
       </a>` : `
       <button class="sc-trade wait" disabled>
         WAIT &mdash; No confluence yet
-      </button>`;
+      </button>
+      <a href="${tvUrl}" target="_blank" class="sc-tv-link">
+        View chart &nearr;
+      </a>`;
 
     const reason=(s.reasons||[]).slice(0,2).join(' · ')||'Neutral &mdash; wait for setup';
 
@@ -1604,6 +1643,55 @@ function notifyChatNewSignal(inst, direction){
     const badge = document.getElementById('chat-badge');
     if(badge){ badge.style.display='flex'; badge.textContent='!'; }
   }
+}
+</script>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-items">
+    <a href="index.html"       class="mobile-nav-item active">
+      <span class="mobile-nav-icon">📊</span>
+      <span class="mobile-nav-label">Signals</span>
+    </a>
+    <a href="positions.html"   class="mobile-nav-item">
+      <span class="mobile-nav-icon">📈</span>
+      <span class="mobile-nav-label">Positions</span>
+    </a>
+    <a href="calculator.html"  class="mobile-nav-item">
+      <span class="mobile-nav-icon">🧮</span>
+      <span class="mobile-nav-label">Calculator</span>
+    </a>
+    <a href="journal.html"     class="mobile-nav-item">
+      <span class="mobile-nav-icon">📓</span>
+      <span class="mobile-nav-label">Journal</span>
+    </a>
+    <a href="performance.html" class="mobile-nav-item">
+      <span class="mobile-nav-icon">🎯</span>
+      <span class="mobile-nav-label">Performance</span>
+    </a>
+  </div>
+</nav>
+
+<script>
+// ── HIDE WAIT TOGGLE ─────────────────────────────────────────────────────────
+let _showActiveOnly = false;
+
+function toggleWaitFilter(){
+  _showActiveOnly = !_showActiveOnly;
+  const btn = document.getElementById('filter-btn');
+  if(btn) btn.classList.toggle('active', _showActiveOnly);
+  applyWaitFilter();
+}
+
+function applyWaitFilter(){
+  document.querySelectorAll('.scard').forEach(card=>{
+    const isWait = card.classList.contains('wait');
+    if(_showActiveOnly && isWait){
+      card.classList.add('hidden');
+    } else {
+      card.classList.remove('hidden');
+    }
+  });
 }
 </script>
 </body>
