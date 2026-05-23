@@ -165,6 +165,36 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 .sc-ai-warn{font-size:10px;color:var(--gold);margin-top:5px;padding-top:5px;border-top:1px solid rgba(210,153,34,0.2)}
 .sc-ai-level{font-size:10px;color:var(--cyan);margin-top:4px;font-family:var(--mono)}
 
+/* DRAWDOWN PROTECTION */
+.risk-banner{position:fixed;top:52px;left:0;right:0;z-index:200;padding:8px 2rem;display:none;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;gap:12px}
+.risk-banner.warning{background:rgba(210,153,34,0.15);border-bottom:1px solid rgba(210,153,34,0.3);color:var(--gold);display:flex}
+.risk-banner.lockout{background:rgba(248,81,73,0.15);border-bottom:2px solid rgba(248,81,73,0.4);color:var(--red);display:flex}
+.risk-banner-icon{font-size:14px;flex-shrink:0}
+.risk-banner-text{flex:1}
+.risk-banner-pct{font-family:var(--mono);font-weight:800;font-size:13px;flex-shrink:0}
+
+.risk-lockout-modal{position:fixed;inset:0;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);z-index:500;display:none;align-items:center;justify-content:center}
+.risk-lockout-modal.show{display:flex}
+.risk-lockout-box{background:var(--bg2);border:2px solid var(--red);border-radius:16px;padding:2.5rem;width:460px;max-width:90vw;text-align:center}
+.risk-lockout-icon{font-size:3rem;margin-bottom:1rem}
+.risk-lockout-title{font-size:1.2rem;font-weight:800;color:var(--red);margin-bottom:0.5rem;letter-spacing:-0.01em}
+.risk-lockout-body{font-size:13px;color:var(--muted2);line-height:1.7;margin-bottom:1.5rem}
+.risk-lockout-stats{background:var(--bg3);border-radius:8px;padding:1rem;margin-bottom:1.5rem;text-align:left}
+.risk-stat-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)}
+.risk-stat-row:last-child{border-bottom:none}
+.risk-stat-lbl{color:var(--muted)}
+.risk-stat-val{font-family:var(--mono);font-weight:600;color:var(--red)}
+.risk-override-wrap{margin-bottom:1rem}
+.risk-override-lbl{font-size:11px;color:var(--muted);margin-bottom:6px;display:block}
+.risk-override-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;padding:10px 14px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;text-align:center;letter-spacing:0.1em;text-transform:uppercase}
+.risk-override-input:focus{border-color:var(--red)}
+.risk-override-btn{width:100%;padding:12px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;letter-spacing:0.05em}
+.risk-override-btn.valid{border-color:var(--red);color:var(--red);background:var(--rdim)}
+.risk-override-btn.valid:hover{background:rgba(248,81,73,0.2)}
+
+.btn-disabled-risk{opacity:0.35;cursor:not-allowed;pointer-events:none;filter:grayscale(0.5)}
+.btn-margin-warn{opacity:0.5;cursor:not-allowed;pointer-events:none}
+
 /* LOADING SKELETON */
 .skeleton{background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;height:12px;margin-bottom:6px}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
@@ -240,6 +270,32 @@ nav{background:rgba(8,11,15,0.96);backdrop-filter:blur(20px);border-bottom:1px s
 </head>
 <script src="correlation.js"></script>
 <body>
+
+<!-- DRAWDOWN WARNING BANNER -->
+<div class="risk-banner" id="risk-banner">
+  <span class="risk-banner-icon" id="risk-icon">⚠️</span>
+  <span class="risk-banner-text" id="risk-text">—</span>
+  <span class="risk-banner-pct" id="risk-pct">—</span>
+</div>
+
+<!-- DRAWDOWN LOCKOUT MODAL -->
+<div class="risk-lockout-modal" id="risk-modal">
+  <div class="risk-lockout-box">
+    <div class="risk-lockout-icon">🛑</div>
+    <div class="risk-lockout-title" id="modal-title">TRADING SUSPENDED</div>
+    <div class="risk-lockout-body" id="modal-body">—</div>
+    <div class="risk-lockout-stats" id="modal-stats"></div>
+    <div class="risk-override-wrap">
+      <span class="risk-override-lbl">Type OVERRIDE to resume trading (use with extreme caution)</span>
+      <input class="risk-override-input" id="override-input"
+             placeholder="Type OVERRIDE here"
+             oninput="checkOverride(this.value)">
+    </div>
+    <button class="risk-override-btn" id="override-btn" onclick="executeOverride()" disabled>
+      OVERRIDE RISK LIMIT
+    </button>
+  </div>
+</div>
 
 <nav>
   <div class="nav-logo" style="white-space:nowrap"><div class="nav-dot"></div>OANDA TRADING CENTER</div>
@@ -1072,5 +1128,206 @@ updatePulse();
 setInterval(updatePulse, 30000);
 setInterval(updateSessions, 60000);
 </script>
+
+<script>
+// ── DRAWDOWN PROTECTION ENGINE ────────────────────────────────────────────────
+let _riskStatus    = null;
+let _riskOverridden= false;
+let _riskPollTimer = null;
+
+const RISK_API = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
+  ? 'http://localhost:8000' : 'https://oanda-trading-center.onrender.com';
+
+async function fetchRiskStatus(){
+  try{
+    const r = await fetch(`${RISK_API}/api/risk-status`);
+    const d = await r.json();
+    if(!d.ok) return;
+    _riskStatus = d;
+    applyRiskBlocks(d);
+  } catch(e){}
+}
+
+function applyRiskBlocks(risk){
+  if(_riskOverridden) return;
+
+  const banner     = document.getElementById('risk-banner');
+  const modal      = document.getElementById('risk-modal');
+  const bannerText = document.getElementById('risk-text');
+  const bannerPct  = document.getElementById('risk-pct');
+  const bannerIcon = document.getElementById('risk-icon');
+
+  // ── LOCKOUT (hard block) ───────────────────────────────────────────────────
+  if(risk.weekly_lockout){
+    showLockoutModal(
+      'WEEKLY LOSS LIMIT REACHED',
+      `You have lost ${formatPct(risk.weekly_used_pct)} of your weekly limit. ` +
+      `Trading is suspended to protect your account. ` +
+      `Weekly loss: $${Math.abs(risk.weekly_loss).toFixed(2)} (limit: $${risk.weekly_hard_limit.toFixed(2)}).`,
+      risk, 'weekly'
+    );
+    disableAllTradeButtons();
+    return;
+  }
+
+  if(risk.daily_lockout){
+    showLockoutModal(
+      'DAILY LOSS LIMIT REACHED',
+      `You have lost ${formatPct(risk.daily_used_pct)} of your daily limit. ` +
+      `Trading is suspended until midnight UTC. ` +
+      `Daily loss: $${Math.abs(risk.daily_pnl).toFixed(2)} (limit: $${risk.daily_hard_limit.toFixed(2)}).`,
+      risk, 'daily'
+    );
+    disableAllTradeButtons();
+    return;
+  }
+
+  // Close modal if previously open and no longer in lockout
+  if(modal) modal.classList.remove('show');
+
+  // ── WARNING (soft block) ───────────────────────────────────────────────────
+  if(risk.weekly_warning && banner){
+    banner.className = 'risk-banner warning';
+    bannerIcon.textContent = '⚠️';
+    bannerText.textContent =
+      `Weekly loss warning: $${Math.abs(risk.weekly_loss).toFixed(2)} lost this week ` +
+      `(${formatPct(risk.weekly_used_pct)} of 10% soft limit). Reduce position sizes.`;
+    bannerPct.textContent = `${formatPct(risk.weekly_used_pct)} used`;
+  } else if(risk.daily_warning && banner){
+    banner.className = 'risk-banner warning';
+    bannerIcon.textContent = '⚠️';
+    bannerText.textContent =
+      `Daily loss warning: $${Math.abs(risk.daily_pnl).toFixed(2)} lost today ` +
+      `(${formatPct(risk.daily_used_pct)} of 5% soft limit). Trade carefully.`;
+    bannerPct.textContent = `${formatPct(risk.daily_used_pct)} used`;
+  } else if(banner){
+    banner.className = 'risk-banner'; // hide
+  }
+
+  // ── MARGIN BLOCK ──────────────────────────────────────────────────────────
+  if(risk.margin_warning){
+    if(banner){
+      banner.className = 'risk-banner lockout';
+      bannerIcon.textContent = '🔴';
+      bannerText.textContent =
+        `Margin critical: £${risk.margin_available.toFixed(2)} available ` +
+        `(minimum £${risk.margin_min}). BUY orders disabled. Close a position first.`;
+      bannerPct.textContent = `£${risk.margin_available.toFixed(2)} free`;
+    }
+    disableBuyButtons();
+  }
+
+  // ── MAX TRADES BLOCK ──────────────────────────────────────────────────────
+  if(risk.trades_full){
+    disableAllTradeButtons('MAX TRADES (3/3)');
+  }
+}
+
+function showLockoutModal(title, body, risk, type){
+  const modal = document.getElementById('risk-modal');
+  if(!modal) return;
+
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent  = body;
+
+  const statsEl = document.getElementById('modal-stats');
+  statsEl.innerHTML = `
+    <div class="risk-stat-row">
+      <span class="risk-stat-lbl">Daily loss</span>
+      <span class="risk-stat-val">$${Math.abs(risk.daily_pnl).toFixed(2)} (${formatPct(risk.daily_used_pct)} of limit)</span>
+    </div>
+    <div class="risk-stat-row">
+      <span class="risk-stat-lbl">Weekly loss</span>
+      <span class="risk-stat-val">$${Math.abs(risk.weekly_loss).toFixed(2)} (${formatPct(risk.weekly_used_pct)} of limit)</span>
+    </div>
+    <div class="risk-stat-row">
+      <span class="risk-stat-lbl">Balance</span>
+      <span class="risk-stat-val" style="color:var(--muted2)">$${risk.balance.toFixed(2)}</span>
+    </div>
+    <div class="risk-stat-row">
+      <span class="risk-stat-lbl">Open trades</span>
+      <span class="risk-stat-val" style="color:var(--muted2)">${risk.open_trades}/3</span>
+    </div>`;
+
+  modal.classList.add('show');
+}
+
+function disableAllTradeButtons(label){
+  // Disable signal card trade buttons
+  document.querySelectorAll('.sc-trade.buy, .sc-trade.sell').forEach(btn=>{
+    btn.classList.add('btn-disabled-risk');
+    if(label) btn.textContent = label;
+  });
+  // Disable calculator trade button
+  const calcBtn = document.getElementById('trade-btn');
+  if(calcBtn) calcBtn.classList.add('btn-disabled-risk');
+}
+
+function disableBuyButtons(){
+  document.querySelectorAll('.sc-trade.buy').forEach(btn=>{
+    btn.classList.add('btn-margin-warn');
+    btn.textContent = 'MARGIN TOO LOW';
+  });
+  const calcBtn = document.getElementById('trade-btn');
+  if(calcBtn && calcBtn.classList.contains('buy')){
+    calcBtn.classList.add('btn-margin-warn');
+  }
+}
+
+function formatPct(pct){
+  return Math.min(100, Math.round(pct)) + '%';
+}
+
+function checkOverride(val){
+  const btn = document.getElementById('override-btn');
+  if(!btn) return;
+  const valid = val.trim().toUpperCase() === 'OVERRIDE';
+  btn.disabled = !valid;
+  btn.className = valid ? 'risk-override-btn valid' : 'risk-override-btn';
+}
+
+function executeOverride(){
+  const input = document.getElementById('override-input');
+  if(!input || input.value.trim().toUpperCase() !== 'OVERRIDE') return;
+
+  _riskOverridden = true;
+
+  // Close modal
+  const modal = document.getElementById('risk-modal');
+  if(modal) modal.classList.remove('show');
+
+  // Show override banner
+  const banner = document.getElementById('risk-banner');
+  if(banner){
+    banner.className = 'risk-banner warning';
+    document.getElementById('risk-icon').textContent = '⚡';
+    document.getElementById('risk-text').textContent =
+      'RISK LIMIT OVERRIDDEN — Trading active. You are trading outside your risk rules. Proceed with extreme caution.';
+    document.getElementById('risk-pct').textContent = 'OVERRIDE';
+  }
+
+  // Re-enable buttons
+  document.querySelectorAll('.btn-disabled-risk').forEach(btn=>{
+    btn.classList.remove('btn-disabled-risk');
+  });
+  document.querySelectorAll('.btn-margin-warn').forEach(btn=>{
+    btn.classList.remove('btn-margin-warn');
+  });
+
+  // Reset input
+  if(input) input.value = '';
+
+  // Override expires after 1 hour
+  setTimeout(()=>{
+    _riskOverridden = false;
+    fetchRiskStatus();
+  }, 3600000);
+}
+
+// Start risk polling — every 2 minutes
+fetchRiskStatus();
+setInterval(fetchRiskStatus, 120000);
+</script>
+
 </body>
 </html>

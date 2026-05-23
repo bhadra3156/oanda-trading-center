@@ -455,6 +455,47 @@ async def get_journal():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── RISK STATUS ──────────────────────────────────────────────────────────────
+@app.get("/api/risk-status")
+async def get_risk_status():
+    """
+    Returns full drawdown protection status.
+    Frontend uses this to enforce hard trade blocks.
+    """
+    try:
+        pnl     = oanda.get_daily_pnl()
+        trades  = oanda.get_open_trades()
+        account = oanda.get_account_summary()
+        return {
+            "ok":              True,
+            "daily_pnl":       pnl.get("daily_pnl", 0),
+            "daily_loss":      pnl.get("daily_loss", 0),
+            "daily_used_pct":  pnl.get("daily_used_pct", 0),
+            "daily_warning":   pnl.get("daily_warning", False),
+            "daily_lockout":   pnl.get("daily_lockout", False),
+            "daily_soft_limit":pnl.get("daily_soft_limit", 0),
+            "daily_hard_limit":pnl.get("daily_hard_limit", 0),
+            "weekly_pnl":      pnl.get("weekly_pnl", 0),
+            "weekly_loss":     pnl.get("weekly_loss", 0),
+            "weekly_used_pct": pnl.get("weekly_used_pct", 0),
+            "weekly_warning":  pnl.get("weekly_warning", False),
+            "weekly_lockout":  pnl.get("weekly_lockout", False),
+            "weekly_soft_limit":pnl.get("weekly_soft_limit", 0),
+            "weekly_hard_limit":pnl.get("weekly_hard_limit", 0),
+            "margin_available":pnl.get("margin_available", 0),
+            "margin_warning":  pnl.get("margin_warning", False),
+            "margin_min":      pnl.get("margin_min", 50),
+            "any_lockout":     pnl.get("any_lockout", False),
+            "open_trades":     len(trades),
+            "max_trades":      3,
+            "trades_full":     len(trades) >= 3,
+            "balance":         pnl.get("balance", 0),
+        }
+    except Exception as e:
+        logger.error(f"Risk status error: {e}")
+        return {"ok": False, "error": str(e), "any_lockout": False}
+
+
 # ── NEWS ──────────────────────────────────────────────────────────────────────
 @app.get("/api/news")
 async def get_news():

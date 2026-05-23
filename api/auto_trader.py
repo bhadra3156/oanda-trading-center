@@ -97,10 +97,14 @@ def safety_check(sig: dict, oanda_client, correlation_checker=None) -> tuple:
         if margin < MIN_MARGIN:
             return False, f"Insufficient margin: ${margin:.2f} available (minimum ${MIN_MARGIN:.2f})"
 
-        # 6. Daily loss limit
+        # 6. Drawdown lockout checks
         pnl = oanda_client.get_daily_pnl()
-        if pnl.get("daily_breached"):
-            return False, f"Daily loss limit reached. Lost ${abs(pnl.get('total_pnl',0)):.2f} today"
+        if pnl.get("daily_lockout"):
+            return False, f"Daily loss lockout (8%): Lost ${pnl.get('daily_loss',0):.2f} today"
+        if pnl.get("weekly_lockout"):
+            return False, f"Weekly loss lockout (15%): Lost ${pnl.get('weekly_loss',0):.2f} this week"
+        if pnl.get("margin_warning"):
+            return False, f"Margin critical: only {pnl.get('margin_available',0):.2f} available"
 
         # 7. Cluster/correlation check
         if correlation_checker:

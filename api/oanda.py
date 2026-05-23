@@ -33,35 +33,104 @@ class OandaClient:
         return r.response.get("account", {})
 
     def get_daily_pnl(self):
-        history  = self.get_trade_history(count=100)
-        today    = str(datetime.utcnow().date())
-        pnl, wins, losses = 0.0, 0, 0
-        balance  = 0.0
+        """
+        Returns daily + weekly P&L with full risk status.
+        Limits:
+          Daily soft warning:  5% loss
+          Daily hard lockout:  8% loss
+          Weekly soft warning: 10% loss
+          Weekly hard lockout: 15% loss
+          Margin minimum:      £50 absolute
+        """
+        history = self.get_trade_history(count=200)
+        now     = datetime.utcnow()
+        today   = str(now.date())
+
+        # Week start = Monday
+        week_start = str((now - __import__("datetime").timedelta(days=now.weekday())).date())
+
+        balance = 0.0
+        margin_avail = 0.0
+        nav = 0.0
         try:
-            balance = float(self.get_account_summary().get("balance", 0))
+            acc          = self.get_account_summary()
+            balance      = float(acc.get("balance", 0))
+            margin_avail = float(acc.get("marginAvailable", 0))
+            nav          = float(acc.get("NAV", balance))
         except Exception:
             pass
+
+        daily_pnl, weekly_pnl = 0.0, 0.0
+        wins, losses = 0, 0
+
         for t in history:
-            if t.get("closeTime", "")[:10] == today:
-                pl = float(t.get("realizedPL", 0))
-                pnl   += pl
+            close_date = t.get("closeTime", "")[:10]
+            pl = float(t.get("realizedPL", 0))
+            if close_date == today:
+                daily_pnl += pl
                 wins   += 1 if pl > 0 else 0
                 losses += 1 if pl <= 0 else 0
-        count         = wins + losses
-        daily_limit   = round(balance * 0.05, 2)
-        weekly_limit  = round(balance * 0.10, 2)
-        daily_used    = round(abs(min(0.0, pnl)) / daily_limit * 100, 1) if daily_limit else 0
+            if close_date >= week_start:
+                weekly_pnl += pl
+
+        count = wins + losses
+
+        # Loss amounts (positive number = loss)
+        daily_loss  = abs(min(0.0, daily_pnl))
+        weekly_loss = abs(min(0.0, weekly_pnl))
+
+        # Thresholds
+        daily_soft_limit  = round(balance * 0.05, 2)   # 5%
+        daily_hard_limit  = round(balance * 0.08, 2)   # 8%
+        weekly_soft_limit = round(balance * 0.10, 2)   # 10%
+        weekly_hard_limit = round(balance * 0.15, 2)   # 15%
+        margin_min        = 50.0                        # £50 absolute
+
+        # Usage percentages
+        daily_used_pct  = round(daily_loss  / daily_soft_limit  * 100, 1) if daily_soft_limit  else 0
+        weekly_used_pct = round(weekly_loss / weekly_soft_limit * 100, 1) if weekly_soft_limit else 0
+
+        # Risk status flags
+        daily_warning  = daily_loss  >= daily_soft_limit
+        daily_lockout  = daily_loss  >= daily_hard_limit
+        weekly_warning = weekly_loss >= weekly_soft_limit
+        weekly_lockout = weekly_loss >= weekly_hard_limit
+        margin_warning = margin_avail < margin_min
+        any_lockout    = daily_lockout or weekly_lockout
+
         return {
-            "date":          today,
-            "total_pnl":     round(pnl, 2),
-            "trade_count":   count,
-            "wins":          wins,
-            "losses":        losses,
-            "win_rate":      round(wins / count * 100, 1) if count else 0,
-            "daily_limit":   daily_limit,
-            "weekly_limit":  weekly_limit,
-            "daily_used_pct":daily_used,
-            "daily_breached":daily_used >= 100,
+            # Daily
+            "date":              today,
+            "total_pnl":         round(daily_pnl, 2),
+            "daily_pnl":         round(daily_pnl, 2),
+            "daily_loss":        round(daily_loss, 2),
+            "daily_soft_limit":  daily_soft_limit,
+            "daily_hard_limit":  daily_hard_limit,
+            "daily_used_pct":    daily_used_pct,
+            "daily_warning":     daily_warning,
+            "daily_lockout":     daily_lockout,
+            # Weekly
+            "week_start":        week_start,
+            "weekly_pnl":        round(weekly_pnl, 2),
+            "weekly_loss":       round(weekly_loss, 2),
+            "weekly_soft_limit": weekly_soft_limit,
+            "weekly_hard_limit": weekly_hard_limit,
+            "weekly_used_pct":   weekly_used_pct,
+            "weekly_warning":    weekly_warning,
+            "weekly_lockout":    weekly_lockout,
+            # Margin
+            "margin_available":  round(margin_avail, 2),
+            "margin_warning":    margin_warning,
+            "margin_min":        margin_min,
+            # Overall
+            "any_lockout":       any_lockout,
+            "daily_breached":    daily_lockout,
+            # Trade stats
+            "trade_count":       count,
+            "wins":              wins,
+            "losses":            losses,
+            "win_rate":          round(wins / count * 100, 1) if count else 0,
+            "balance":           round(balance, 2),
         }
 
     # ── PRICING ───────────────────────────────────────────────────────────────
