@@ -21,6 +21,7 @@ from api.telegram        import TelegramBot
 from api.supabase_client import SupabaseClient
 from api.calculator      import PositionCalculator
 from api.news_check      import get_all_upcoming_events, check_news_blackout
+from api.backtest        import run_backtest
 from api.auto_trader     import (
     check_new_signals, safety_check, add_pending_trade,
     check_expired_trades, process_telegram_reply,
@@ -589,6 +590,110 @@ async def correlation_map_endpoint(instrument: str):
         "instrument":   instrument,
         "correlations": get_correlation_map_for_instrument(instrument),
     }
+
+
+# ── BACKTEST ──────────────────────────────────────────────────────────────────
+class BacktestRequest(BaseModel):
+    instruments:      list
+    starting_balance: float = 627.0
+    risk_pct:         float = 1.0
+    max_hold_bars:    int   = 20
+    signal_threshold: int   = 55
+    candle_count:     int   = 5000  # ~2.3 years of H4
+
+@app.post("/api/backtest")
+async def run_backtest_endpoint(req: BacktestRequest):
+    """
+    Run H4 confluence backtest on selected instruments.
+    Fetches historical candles from Oanda and runs the exact
+    same scoring logic as the live signal engine.
+    """
+    try:
+        if not req.instruments:
+            raise HTTPException(status_code=400, detail="Select at least one instrument")
+        if len(req.instruments) > 8:
+            raise HTTPException(status_code=400, detail="Max 8 instruments")
+
+        results = {}
+        loop    = asyncio.get_running_loop()
+
+        async def backtest_one(instrument: str):
+            try:
+                # Fetch historical candles
+                candles = await loop.run_in_executor(
+                    _executor,
+                    lambda: oanda.get_candles(
+                        instrument,
+                        granularity="H4",
+                        count=req.candle_count
+                    )
+                )
+                if not candles:
+                    return instrument, {"error": "No candle data returned", "instrument": instrument}
+
+                # Run backtest
+                result = await loop.run_in_executor(
+                    _executor,
+                    lambda: run_backtest(
+                        instrument=instrument,
+                        candles=candles,
+                        starting_balance=req.starting_balance,
+                        risk_pct=req.risk_pct,
+                        max_hold_bars=req.max_hold_bars,
+                        signal_threshold=req.signal_threshold,
+                    )
+                )
+                return instrument, result
+            except Exception as e:
+                logger.error(f"Backtest error {instrument}: {e}")
+                return instrument, {"error": str(e), "instrument": instrument}
+
+        # Run all instruments concurrently
+        tasks = [backtest_one(inst) for inst in req.instruments]
+        pairs = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for pair in pairs:
+            if isinstance(pair, Exception):
+                continue
+            inst, result = pair
+            results[inst] = result
+
+        # Aggregate summary across all instruments
+        all_trades = []
+        for r in results.values():
+            if isinstance(r, dict) and "trades" in r:
+                all_trades.extend(r.get("trades", []))
+
+        total_wins   = sum(1 for t in all_trades if t["outcome"] == "WIN")
+        total_losses = sum(1 for t in all_trades if t["outcome"] == "LOSS")
+        total_count  = len(all_trades)
+        overall_wr   = round(total_wins/total_count*100, 1) if total_count else 0
+        overall_rs   = [t["r_multiple"] for t in all_trades]
+        overall_avgr = round(sum(overall_rs)/len(overall_rs), 3) if overall_rs else 0
+
+        return {
+            "ok":              True,
+            "results":         results,
+            "summary": {
+                "total_trades":  total_count,
+                "total_wins":    total_wins,
+                "total_losses":  total_losses,
+                "overall_win_rate": overall_wr,
+                "overall_avg_r":    overall_avgr,
+                "instruments_run":  len(results),
+            },
+            "params": {
+                "starting_balance": req.starting_balance,
+                "risk_pct":         req.risk_pct,
+                "max_hold_bars":    req.max_hold_bars,
+                "signal_threshold": req.signal_threshold,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Backtest endpoint error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── AI DEBRIEF ────────────────────────────────────────────────────────────────
