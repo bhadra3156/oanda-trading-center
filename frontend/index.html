@@ -1157,10 +1157,143 @@ async function fetchAll(){
 }
 
 // ── STARTUP ───────────────────────────────────────────────────────────────────
+// -- STARTUP -- replace the last <script> block at the bottom of index.html ----
+// Find this exact section in your index.html:
+//
+//   renderSkeletons();
+//   fetchNews();
+//   fetchAll();
+//   setInterval(fetchAll, 300000); // 5 minutes
+//
+// Replace it with everything below:
+
 renderSkeletons();
 fetchNews();
-fetchAll();
-setInterval(fetchAll, 300000); // 5 minutes
+
+// -- SMART STARTUP WITH COLD-START RETRY --------------------------------------
+async function startupWithRetry() {
+  const scanDot = document.getElementById('scan-dot');
+  const scanLbl = document.getElementById('scan-label');
+
+  // Step 1: Quick ping to check if backend is already warm
+  try {
+    const pingRes = await fetch(API + '/', { signal: AbortSignal.timeout(5000) });
+    if (pingRes.ok) {
+      // Backend warm -- load normally
+      fetchAll();
+      return;
+    }
+  } catch(e) {
+    // Backend cold -- show warm-up UI
+  }
+
+  // Step 2: Backend is cold -- show warm-up banner and poll
+  showWarmupBanner();
+  scanDot.className = 'scan-dot scanning';
+  scanLbl.textContent = 'Backend starting...';
+
+  const maxWait   = 90;   // seconds
+  const pollEvery = 5;    // seconds
+  const attempts  = maxWait / pollEvery;
+
+  for (let i = 0; i < attempts; i++) {
+    const remaining = maxWait - (i * pollEvery);
+    scanLbl.textContent = 'Starting up... (~' + remaining + 's)';
+    updateWarmupProgress(i, attempts);
+
+    await new Promise(r => setTimeout(r, pollEvery * 1000));
+
+    try {
+      const res = await fetch(API + '/', { signal: AbortSignal.timeout(4000) });
+      if (res.ok) {
+        // Backend is awake -- load dashboard
+        hideWarmupBanner();
+        scanLbl.textContent = 'Connected -- loading...';
+        scanDot.className = 'scan-dot done';
+        fetchAll();
+        return;
+      }
+    } catch(e) {
+      // Still waking up -- keep waiting
+    }
+  }
+
+  // All retries exhausted
+  scanDot.className = 'scan-dot';
+  scanLbl.textContent = 'Backend offline';
+  showOfflineBanner();
+}
+
+function showWarmupBanner() {
+  if (document.getElementById('warmup-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'warmup-banner';
+  b.style.cssText = [
+    'position:fixed', 'top:84px', 'left:0', 'right:0', 'z-index:9998',
+    'background:linear-gradient(135deg,#2d1f00,#3d2a00)',
+    'border-bottom:2px solid #d29922',
+    'color:#e6c94a', 'padding:10px 2rem',
+    'display:flex', 'align-items:center', 'gap:14px',
+    'font-family:IBM Plex Sans,sans-serif', 'font-size:12px',
+    'font-weight:600'
+  ].join(';');
+  b.innerHTML = [
+    '<div id="wu-spinner" style="width:14px;height:14px;border:2px solid rgba(210,153,34,0.3);',
+    'border-top-color:#d29922;border-radius:50%;animation:sp 0.8s linear infinite;flex-shrink:0"></div>',
+    '<div style="flex:1">',
+    '<strong>Backend waking up</strong> -- Render free tier cold start takes 30'60s. ',
+    'Dashboard will load automatically. Your account is unaffected.',
+    '</div>',
+    '<div id="wu-bar-wrap" style="width:140px;height:3px;background:rgba(210,153,34,0.2);',
+    'border-radius:2px;flex-shrink:0">',
+    '<div id="wu-bar" style="height:3px;background:#d29922;border-radius:2px;',
+    'width:0%;transition:width 0.8s ease"></div>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(b);
+}
+
+function updateWarmupProgress(step, total) {
+  const bar = document.getElementById('wu-bar');
+  if (bar) bar.style.width = Math.round((step / total) * 100) + '%';
+}
+
+function hideWarmupBanner() {
+  const b = document.getElementById('warmup-banner');
+  if (!b) return;
+  b.style.opacity = '0';
+  b.style.transition = 'opacity 0.4s';
+  setTimeout(() => b.remove(), 500);
+}
+
+function showOfflineBanner() {
+  hideWarmupBanner();
+  if (document.getElementById('offline-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'offline-banner';
+  b.style.cssText = [
+    'position:fixed', 'top:84px', 'left:0', 'right:0', 'z-index:9999',
+    'background:linear-gradient(135deg,#2d0a0a,#3d0f0f)',
+    'border-bottom:2px solid #f85149',
+    'color:#f85149', 'padding:10px 2rem',
+    'display:flex', 'justify-content:space-between', 'align-items:center',
+    'font-family:IBM Plex Sans,sans-serif', 'font-size:12px', 'font-weight:600'
+  ].join(';');
+  b.innerHTML = [
+    '<span>Backend unavailable after 90s. Render may be restarting. ',
+    'Your trades are unaffected.</span>',
+    '<button onclick="location.reload()" style="',
+    'background:rgba(248,81,73,0.15);border:1px solid rgba(248,81,73,0.4);',
+    'color:#f85149;padding:6px 16px;border-radius:5px;cursor:pointer;',
+    'font-size:11px;font-weight:700;font-family:IBM Plex Sans,sans-serif">',
+    'Retry</button>'
+  ].join('');
+  document.body.appendChild(b);
+}
+
+// Launch startup
+startupWithRetry();
+setInterval(fetchAll, 300000); // 5 minutes auto-refresh
 </script>
 
 
