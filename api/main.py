@@ -1,7 +1,7 @@
 """
-Oanda Trading Center - FastAPI Backend v2
+Oanda Trading Center — FastAPI Backend v2
 8 instruments: GBP/JPY, EUR/USD, XAU/USD, SUGAR, WHEAT, SPX500, WTI, NATGAS
-Mode 1 Semi-Auto Trading: Signal -> Telegram YES/NO -> Execute
+Mode 1 Semi-Auto Trading: Signal → Telegram YES/NO → Execute
 """
 import os, asyncio, logging
 from concurrent.futures import ThreadPoolExecutor
@@ -29,7 +29,6 @@ from api.auto_trader     import (
     register_active_trade, unlock_instrument, is_instrument_locked,
     _last_update_id
 )
-from api.keepalive import keepalive_loop   # <- NEW
 
 try:
     from api.correlation import check_correlation, get_correlation_map_for_instrument
@@ -62,7 +61,7 @@ calc     = PositionCalculator(oanda)
 _alerted  = set()
 _executor = ThreadPoolExecutor(max_workers=8)
 
-# -- 8 instruments only --------------------------------------------------------
+# ── 8 instruments only ────────────────────────────────────────────────────────
 INSTRUMENTS = [
     "GBP_JPY",
     "EUR_USD",
@@ -74,11 +73,11 @@ INSTRUMENTS = [
     "NATGAS_USD",
 ]
 
-# -- Auto-trader state ---------------------------------------------------------
+# ── Auto-trader state ─────────────────────────────────────────────────────────
 _auto_trader_running = False
 _last_tg_update_id   = 0
 
-# -- MODELS --------------------------------------------------------------------
+# ── MODELS ────────────────────────────────────────────────────────────────────
 class OrderRequest(BaseModel):
     instrument:  str
     direction:   str
@@ -110,14 +109,14 @@ class CorrelationCheckRequest(BaseModel):
 
 class AIChatRequest(BaseModel):
     message:  str
-    history:  list = []
+    history:  list = []   # last N turns for context
 
 class DebriefRequest(BaseModel):
     trades: list
     prompt: str
 
 
-# -- HEALTH --------------------------------------------------------------------
+# ── HEALTH ────────────────────────────────────────────────────────────────────
 @app.get("/")
 @app.get("/health")
 @app.get("/api/health")
@@ -142,7 +141,7 @@ async def health():
     }
 
 
-# -- ACCOUNT -------------------------------------------------------------------
+# ── ACCOUNT ───────────────────────────────────────────────────────────────────
 @app.get("/api/account")
 async def get_account():
     try:
@@ -153,7 +152,7 @@ async def get_account():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- PRICES --------------------------------------------------------------------
+# ── PRICES ────────────────────────────────────────────────────────────────────
 @app.get("/api/prices")
 async def get_prices():
     prices = {}
@@ -165,7 +164,7 @@ async def get_prices():
     return {"ok": True, "prices": prices, "timestamp": datetime.utcnow().isoformat()}
 
 
-# -- TRADES --------------------------------------------------------------------
+# ── TRADES ────────────────────────────────────────────────────────────────────
 @app.get("/api/trades")
 async def get_trades():
     try:
@@ -175,7 +174,7 @@ async def get_trades():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- ANALYSE ONE INSTRUMENT ----------------------------------------------------
+# ── ANALYSE ONE INSTRUMENT ────────────────────────────────────────────────────
 def _analyse_one(inst: str) -> dict:
     try:
         sig = signals.analyse(inst)
@@ -197,10 +196,11 @@ def _analyse_one(inst: str) -> dict:
         except Exception as e:
             logger.error(f"Supabase save error: {e}")
 
+        # Standard Telegram alert (non-auto)
         alert_key = f"{inst}_{sig['signal']}_{sig.get('price','')}"
         if alert_key not in _alerted:
             try:
-                telegram.send_signal(inst, sig, sig.get("ai") or {})
+                telegram.send_signal(inst, sig or {})
                 _alerted.add(alert_key)
                 if len(_alerted) > 100:
                     _alerted.clear()
@@ -212,7 +212,7 @@ def _analyse_one(inst: str) -> dict:
     return sig
 
 
-# -- SIGNALS -------------------------------------------------------------------
+# ── SIGNALS ───────────────────────────────────────────────────────────────────
 @app.get("/api/signals")
 async def get_signals():
     try:
@@ -234,6 +234,7 @@ async def get_signals():
             else:
                 results[inst] = result
 
+        # ── AUTO-TRADER: process new signals ─────────────────────────────────
         try:
             new_sigs = check_new_signals(results)
             for sig in new_sigs:
@@ -243,9 +244,10 @@ async def get_signals():
         except Exception as e:
             logger.error(f"Auto-trader signal processing error: {e}")
 
+        # Save daily account snapshot (once per scan)
         try:
             hour = datetime.utcnow().hour
-            if hour % 4 == 0:
+            if hour % 4 == 0:  # Save every 4 hours
                 summary = oanda.get_account_summary()
                 db.save_account_snapshot(summary)
         except Exception as e:
@@ -257,12 +259,17 @@ async def get_signals():
 
 
 def _process_auto_signal(sig: dict):
+    """
+    Called when a NEW signal is detected.
+    Runs safety checks, sends Telegram alert if passed.
+    """
     inst       = sig.get("instrument", "")
     direction  = sig.get("signal", "")
     confidence = sig.get("confidence", 0)
 
     logger.info(f"Auto-trader: processing NEW signal {inst} {direction} ({confidence}%)")
 
+    # Check news blackout first — notify with details if blocked
     try:
         news = check_news_blackout(inst)
         if news.get("in_blackout"):
@@ -272,15 +279,18 @@ def _process_auto_signal(sig: dict):
     except Exception as e:
         logger.error(f"News check error in auto-trader: {e}")
 
+    # Run safety checks
     corr_checker = check_correlation if CORRELATION_AVAILABLE else None
     passed, reason = safety_check(sig, oanda, corr_checker)
 
     if not passed:
+        # Only notify for important blocks (not just low confidence)
         if "confidence" not in reason.lower():
             telegram.send_trade_blocked(inst, direction, reason)
-        logger.info(f"Auto-trader: {inst} blocked - {reason}")
+        logger.info(f"Auto-trader: {inst} blocked — {reason}")
         return
 
+    # Calculate position size with correlation adjustment (Fix 9)
     try:
         account     = oanda.get_account_summary()
         balance     = float(account.get("balance", 0))
@@ -289,10 +299,13 @@ def _process_auto_signal(sig: dict):
         units       = calculate_units(balance, atr, sig, open_trades=open_trades)
 
         if units <= 0:
-            logger.warning(f"Auto-trader: {inst} - calculated 0 units, skipping")
+            logger.warning(f"Auto-trader: {inst} — calculated 0 units, skipping")
             return
 
+        # Store as pending trade
         add_pending_trade(sig, units)
+
+        # Send Telegram alert asking for YES/NO
         ai = sig.get("ai") or {}
         telegram.send_signal_alert(inst, sig, ai, units)
         logger.info(f"Auto-trader: alert sent for {inst} {direction} {units} units")
@@ -301,8 +314,13 @@ def _process_auto_signal(sig: dict):
         logger.error(f"Auto-trader signal processing error: {e}")
 
 
-# -- BACKGROUND TASK: Poll Telegram for replies --------------------------------
+# ── BACKGROUND TASK: Poll Telegram for replies ────────────────────────────────
 async def telegram_polling_loop():
+    """
+    Runs forever in background.
+    Checks Telegram every 30 seconds for YES/NO replies.
+    Also clears expired pending trades.
+    """
     global _auto_trader_running, _last_tg_update_id
     _auto_trader_running = True
     logger.info("Auto-trader polling loop started")
@@ -311,11 +329,13 @@ async def telegram_polling_loop():
 
     while True:
         try:
+            # 1. Check for expired pending trades
             expired = check_expired_trades()
             for trade in expired:
-                telegram.send_expired(trade)
+                telegram.send_expired(trade.get("instrument",""), trade.get("direction",""))
                 logger.info(f"Expired trade notified: {trade.get('instrument')}")
 
+            # 2. Poll Telegram for new messages
             updates = telegram.get_updates(offset=_last_tg_update_id + 1)
 
             for update in updates:
@@ -326,15 +346,17 @@ async def telegram_polling_loop():
                 if not text:
                     continue
 
+                # Only process messages from YOUR chat ID
                 from_id = str(message.get("chat", {}).get("id", ""))
                 if from_id != str(telegram.chat_id):
-                    logger.warning(f"Message from unknown chat {from_id} - ignored")
+                    logger.warning(f"Message from unknown chat {from_id} — ignored")
                     continue
 
                 logger.info(f"Telegram reply received: '{text}'")
 
+                # Handle STOP/RESUME specially
                 text_upper = text.upper()
-                if text_upper in ("STOP", "PAUSE"):
+                if text_upper == "STOP" or text_upper == "PAUSE":
                     telegram.pause()
                     telegram.send("*Auto-trader paused.*\nSend RESUME to restart.")
                     continue
@@ -343,7 +365,10 @@ async def telegram_polling_loop():
                     telegram.send("*Auto-trader resumed.*\nWatching for signals.")
                     continue
 
-                process_telegram_reply(text, oanda, telegram, corr_checker)
+                # Process YES/NO/STATUS
+                process_telegram_reply(
+                    text, oanda, telegram, corr_checker
+                )
 
         except Exception as e:
             logger.error(f"Telegram polling error: {e}")
@@ -351,15 +376,14 @@ async def telegram_polling_loop():
         await asyncio.sleep(30)
 
 
-# -- STARTUP: Launch background tasks -----------------------------------------
+# ── STARTUP: Launch background tasks ─────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(telegram_polling_loop())
-    asyncio.create_task(keepalive_loop())          # <- NEW: prevents Render cold starts
-    logger.info("Auto-trader + keepalive background tasks launched")
+    logger.info("Auto-trader background task launched")
 
 
-# -- PLACE ORDER (manual) ------------------------------------------------------
+# ── PLACE ORDER (manual) ──────────────────────────────────────────────────────
 @app.post("/api/place-order")
 async def place_order(order: OrderRequest):
     try:
@@ -384,8 +408,9 @@ async def place_order(order: OrderRequest):
             price = oanda.get_live_price(order.instrument)
             entry = price.get("ask" if order.direction == "BUY" else "bid", 0)
             telegram.send_trade_confirmation(
-                order.instrument, order.direction, entry,
-                order.stop_loss, order.take_profit, order.units,
+                order.instrument, order.direction,
+                order.units, entry,
+                order.stop_loss, order.take_profit,
             )
         except Exception:
             pass
@@ -394,7 +419,7 @@ async def place_order(order: OrderRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- CLOSE TRADE ---------------------------------------------------------------
+# ── CLOSE TRADE ───────────────────────────────────────────────────────────────
 @app.post("/api/close-trade")
 async def close_trade(req: CloseRequest):
     try:
@@ -407,7 +432,7 @@ async def close_trade(req: CloseRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- MODIFY STOP LOSS ----------------------------------------------------------
+# ── MODIFY STOP LOSS ──────────────────────────────────────────────────────────
 @app.post("/api/modify-sl")
 async def modify_sl(req: ModifySlRequest):
     try:
@@ -417,7 +442,7 @@ async def modify_sl(req: ModifySlRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- CALCULATOR ----------------------------------------------------------------
+# ── CALCULATOR ────────────────────────────────────────────────────────────────
 @app.post("/api/calculator")
 async def calculate_position(req: CalculatorRequest):
     try:
@@ -427,7 +452,7 @@ async def calculate_position(req: CalculatorRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- CANDLES -------------------------------------------------------------------
+# ── CANDLES ───────────────────────────────────────────────────────────────────
 @app.get("/api/candles/{instrument}")
 async def get_candles(instrument: str, granularity: str = "H4", count: int = 60):
     try:
@@ -437,11 +462,12 @@ async def get_candles(instrument: str, granularity: str = "H4", count: int = 60)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- PERFORMANCE ---------------------------------------------------------------
+# ── PERFORMANCE ──────────────────────────────────────────────────────────────
 @app.get("/api/performance")
 async def get_performance():
     try:
         stats = db.get_performance_stats()
+        # Add live account data
         try:
             acc   = oanda.get_account_summary()
             pnl   = oanda.get_daily_pnl()
@@ -457,7 +483,7 @@ async def get_performance():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- JOURNAL -------------------------------------------------------------------
+# ── JOURNAL ───────────────────────────────────────────────────────────────────
 @app.get("/api/journal")
 async def get_journal():
     try:
@@ -467,44 +493,48 @@ async def get_journal():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- RISK STATUS ---------------------------------------------------------------
+# ── RISK STATUS ──────────────────────────────────────────────────────────────
 @app.get("/api/risk-status")
 async def get_risk_status():
+    """
+    Returns full drawdown protection status.
+    Frontend uses this to enforce hard trade blocks.
+    """
     try:
         pnl     = oanda.get_daily_pnl()
         trades  = oanda.get_open_trades()
         account = oanda.get_account_summary()
         return {
-            "ok":               True,
-            "daily_pnl":        pnl.get("daily_pnl", 0),
-            "daily_loss":       pnl.get("daily_loss", 0),
-            "daily_used_pct":   pnl.get("daily_used_pct", 0),
-            "daily_warning":    pnl.get("daily_warning", False),
-            "daily_lockout":    pnl.get("daily_lockout", False),
-            "daily_soft_limit": pnl.get("daily_soft_limit", 0),
-            "daily_hard_limit": pnl.get("daily_hard_limit", 0),
-            "weekly_pnl":       pnl.get("weekly_pnl", 0),
-            "weekly_loss":      pnl.get("weekly_loss", 0),
-            "weekly_used_pct":  pnl.get("weekly_used_pct", 0),
-            "weekly_warning":   pnl.get("weekly_warning", False),
-            "weekly_lockout":   pnl.get("weekly_lockout", False),
+            "ok":              True,
+            "daily_pnl":       pnl.get("daily_pnl", 0),
+            "daily_loss":      pnl.get("daily_loss", 0),
+            "daily_used_pct":  pnl.get("daily_used_pct", 0),
+            "daily_warning":   pnl.get("daily_warning", False),
+            "daily_lockout":   pnl.get("daily_lockout", False),
+            "daily_soft_limit":pnl.get("daily_soft_limit", 0),
+            "daily_hard_limit":pnl.get("daily_hard_limit", 0),
+            "weekly_pnl":      pnl.get("weekly_pnl", 0),
+            "weekly_loss":     pnl.get("weekly_loss", 0),
+            "weekly_used_pct": pnl.get("weekly_used_pct", 0),
+            "weekly_warning":  pnl.get("weekly_warning", False),
+            "weekly_lockout":  pnl.get("weekly_lockout", False),
             "weekly_soft_limit":pnl.get("weekly_soft_limit", 0),
             "weekly_hard_limit":pnl.get("weekly_hard_limit", 0),
-            "margin_available": pnl.get("margin_available", 0),
-            "margin_warning":   pnl.get("margin_warning", False),
-            "margin_min":       pnl.get("margin_min", 50),
-            "any_lockout":      pnl.get("any_lockout", False),
-            "open_trades":      len(trades),
-            "max_trades":       3,
-            "trades_full":      len(trades) >= 3,
-            "balance":          pnl.get("balance", 0),
+            "margin_available":pnl.get("margin_available", 0),
+            "margin_warning":  pnl.get("margin_warning", False),
+            "margin_min":      pnl.get("margin_min", 50),
+            "any_lockout":     pnl.get("any_lockout", False),
+            "open_trades":     len(trades),
+            "max_trades":      3,
+            "trades_full":     len(trades) >= 3,
+            "balance":         pnl.get("balance", 0),
         }
     except Exception as e:
         logger.error(f"Risk status error: {e}")
         return {"ok": False, "error": str(e), "any_lockout": False}
 
 
-# -- NEWS ----------------------------------------------------------------------
+# ── NEWS ──────────────────────────────────────────────────────────────────────
 @app.get("/api/news")
 async def get_news():
     try:
@@ -521,7 +551,7 @@ async def get_news():
         }
 
 
-# -- AUTO-TRADER STATUS --------------------------------------------------------
+# ── AUTO-TRADER STATUS ────────────────────────────────────────────────────────
 @app.get("/api/auto-trader/status")
 async def auto_trader_status():
     return {
@@ -533,7 +563,7 @@ async def auto_trader_status():
     }
 
 
-# -- NEWS CHECK ----------------------------------------------------------------
+# ── NEWS CHECK ────────────────────────────────────────────────────────────────
 @app.get("/api/news-check/{instrument}")
 async def news_check_instrument(instrument: str):
     try:
@@ -543,7 +573,7 @@ async def news_check_instrument(instrument: str):
         return {"ok": False, "error": str(e)}
 
 
-# -- CORRELATION ---------------------------------------------------------------
+# ── CORRELATION ───────────────────────────────────────────────────────────────
 @app.post("/api/check-correlation")
 async def check_correlation_endpoint(request: CorrelationCheckRequest):
     if not CORRELATION_AVAILABLE:
@@ -569,17 +599,22 @@ async def correlation_map_endpoint(instrument: str):
     }
 
 
-# -- BACKTEST ------------------------------------------------------------------
+# ── BACKTEST ──────────────────────────────────────────────────────────────────
 class BacktestRequest(BaseModel):
     instruments:      list
     starting_balance: float = 627.0
     risk_pct:         float = 1.0
     max_hold_bars:    int   = 20
     signal_threshold: int   = 55
-    candle_count:     int   = 5000
+    candle_count:     int   = 5000  # ~2.3 years of H4
 
 @app.post("/api/backtest")
 async def run_backtest_endpoint(req: BacktestRequest):
+    """
+    Run H4 confluence backtest on selected instruments.
+    Fetches historical candles from Oanda and runs the exact
+    same scoring logic as the live signal engine.
+    """
     try:
         if not req.instruments:
             raise HTTPException(status_code=400, detail="Select at least one instrument")
@@ -591,6 +626,7 @@ async def run_backtest_endpoint(req: BacktestRequest):
 
         async def backtest_one(instrument: str):
             try:
+                # Fetch historical candles
                 candles = await loop.run_in_executor(
                     _executor,
                     lambda: oanda.get_candles(
@@ -602,6 +638,7 @@ async def run_backtest_endpoint(req: BacktestRequest):
                 if not candles:
                     return instrument, {"error": "No candle data returned", "instrument": instrument}
 
+                # Run backtest
                 result = await loop.run_in_executor(
                     _executor,
                     lambda: run_backtest(
@@ -618,6 +655,7 @@ async def run_backtest_endpoint(req: BacktestRequest):
                 logger.error(f"Backtest error {instrument}: {e}")
                 return instrument, {"error": str(e), "instrument": instrument}
 
+        # Run all instruments concurrently
         tasks = [backtest_one(inst) for inst in req.instruments]
         pairs = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -627,6 +665,7 @@ async def run_backtest_endpoint(req: BacktestRequest):
             inst, result = pair
             results[inst] = result
 
+        # Aggregate summary across all instruments
         all_trades = []
         for r in results.values():
             if isinstance(r, dict) and "trades" in r:
@@ -640,12 +679,12 @@ async def run_backtest_endpoint(req: BacktestRequest):
         overall_avgr = round(sum(overall_rs)/len(overall_rs), 3) if overall_rs else 0
 
         return {
-            "ok":      True,
-            "results": results,
+            "ok":              True,
+            "results":         results,
             "summary": {
-                "total_trades":     total_count,
-                "total_wins":       total_wins,
-                "total_losses":     total_losses,
+                "total_trades":  total_count,
+                "total_wins":    total_wins,
+                "total_losses":  total_losses,
                 "overall_win_rate": overall_wr,
                 "overall_avg_r":    overall_avgr,
                 "instruments_run":  len(results),
@@ -664,9 +703,10 @@ async def run_backtest_endpoint(req: BacktestRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- AI CHAT -------------------------------------------------------------------
+# ── AI CHAT ───────────────────────────────────────────────────────────────────
 @app.post("/api/ai-chat")
 async def ai_chat(req: AIChatRequest):
+    """AI Chat Assistant with live trading context."""
     try:
         ctx = {}
         try:
@@ -715,6 +755,7 @@ async def ai_chat(req: AIChatRequest):
         except Exception:
             pass
 
+        # Build conversation history
         history_parts = []
         for turn in req.history[-6:]:
             role = turn.get("role", "")
@@ -722,6 +763,7 @@ async def ai_chat(req: AIChatRequest):
             history_parts.append(f"{role.upper()}: {msg}")
         history_text = "\n".join(history_parts)
 
+        # Build context strings
         pos_lines = [
             f"  - {p['instrument']} {p['direction']}: {p['units']:.0f} units, "
             f"entry {p['entry']}, P&L ${p['pnl']:.2f}, SL {p['sl']}, TP {p['tp']}"
@@ -731,19 +773,28 @@ async def ai_chat(req: AIChatRequest):
         signals_text   = "\n".join(f"  - {s}" for s in signal_summary) or "  No recent scan"
         news_text      = "\n".join(f"  - {n}" for n in news_summary) or "  None upcoming"
 
+        balance_str    = f"{ctx.get('balance',0):.2f}"
+        nav_str        = f"{ctx.get('nav',0):.2f}"
+        margin_str     = f"{ctx.get('margin_avail',0):.2f}"
+        dpnl_str       = f"{ctx.get('daily_pnl',0):.2f}"
+        dloss_str      = f"{ctx.get('daily_loss',0):.2f}"
+        dwarning_str   = str(ctx.get('daily_warning', False))
+        mwarn_str      = str(ctx.get('margin_warn', False))
+        open_ct        = str(ctx.get('open_trades', 0))
+
         system_prompt = (
             "You are an expert trading assistant for a retail Oanda trader. "
             "You have real-time access to their account data and trading system. "
             "Be direct, specific, and actionable. Never vague. Real money is at stake.\n\n"
             "LIVE ACCOUNT DATA:\n"
-            f"  Balance:          GBP {ctx.get('balance',0):.2f}\n"
-            f"  NAV:              GBP {ctx.get('nav',0):.2f}\n"
-            f"  Margin available: GBP {ctx.get('margin_avail',0):.2f}\n"
-            f"  Daily P&L:        USD {ctx.get('daily_pnl',0):.2f}\n"
-            f"  Daily loss:       USD {ctx.get('daily_loss',0):.2f}\n"
-            f"  Daily warning:    {ctx.get('daily_warning',False)}\n"
-            f"  Margin warning:   {ctx.get('margin_warn',False)}\n\n"
-            f"OPEN POSITIONS ({ctx.get('open_trades',0)}/3 max):\n"
+            f"  Balance:          GBP {balance_str}\n"
+            f"  NAV:              GBP {nav_str}\n"
+            f"  Margin available: GBP {margin_str}\n"
+            f"  Daily P&L:        USD {dpnl_str}\n"
+            f"  Daily loss:       USD {dloss_str}\n"
+            f"  Daily warning:    {dwarning_str}\n"
+            f"  Margin warning:   {mwarn_str}\n\n"
+            f"OPEN POSITIONS ({open_ct}/3 max):\n"
             f"{positions_text}\n\n"
             "LATEST H4 SIGNALS:\n"
             f"{signals_text}\n\n"
@@ -771,7 +822,8 @@ async def ai_chat(req: AIChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- AI DEBRIEF ----------------------------------------------------------------
+
+# ── AI DEBRIEF ────────────────────────────────────────────────────────────────
 @app.post("/api/ai-debrief")
 async def ai_debrief(req: DebriefRequest):
     try:
@@ -781,7 +833,7 @@ async def ai_debrief(req: DebriefRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# -- ENTRY POINT ---------------------------------------------------------------
+# ── ENTRY POINT ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
