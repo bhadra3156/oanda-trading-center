@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Execute &mdash; Oanda Trading Center</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="trade-key.js"></script>
+<style>
+:root{--bg:#080b0f;--bg2:#0d1117;--bg3:#131920;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);--text:#e6edf3;--muted:#7d8590;--green:#3fb950;--gdim:rgba(63,185,80,0.12);--red:#f85149;--rdim:rgba(248,81,73,0.12);--gold:#d29922;--ydim:rgba(210,153,34,0.12);--blue:#388bfd;--bdim:rgba(56,139,253,0.12);--font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;font-size:14px;line-height:1.5}
+nav{border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem}
+.logo{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.1em}
+nav a{color:var(--muted);text-decoration:none;font-size:13px;margin-left:16px}nav a:hover{color:var(--text)}
+main{max-width:620px;margin:0 auto;padding:1.5rem 1rem 4rem}
+h1{font-size:18px;margin-bottom:4px}.sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.side{font-family:var(--mono);font-weight:700;font-size:13px;padding:4px 10px;border-radius:6px}
+.side.BUY{background:var(--gdim);color:var(--green)}.side.SELL{background:var(--rdim);color:var(--red)}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.big{font-family:var(--mono);font-size:26px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cell{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.cell .l{font-size:11px;color:var(--muted)}.cell .v{font-family:var(--mono);font-weight:600;font-size:15px}
+.g{color:var(--green)}.r{color:var(--red)}.y{color:var(--gold)}.b{color:var(--blue)}.m{color:var(--muted)}
+.msg{border-radius:8px;padding:9px 12px;font-size:13px;margin:8px 0}
+.msg.block{background:var(--rdim);border:1px solid rgba(248,81,73,.35)}
+.msg.warn{background:var(--ydim);border:1px solid rgba(210,153,34,.3)}
+.msg.ok{background:var(--gdim);border:1px solid rgba(63,185,80,.3)}
+.msg.info{background:var(--bdim);border:1px solid rgba(56,139,253,.3)}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+.opt:last-child{border-bottom:0}.opt input{margin-top:4px;accent-color:var(--blue)}
+.opt small{display:block;color:var(--muted)}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:10px 0;cursor:pointer}.chk input{margin-top:4px;accent-color:var(--green)}
+button{font:inherit;cursor:pointer}
+.go{width:100%;padding:13px;border-radius:9px;border:0;font-weight:700;font-size:15px}
+.go.BUY{background:var(--green);color:#000}.go.SELL{background:var(--red);color:#fff}
+.go:disabled{opacity:.35;cursor:not-allowed}
+.ghost{background:transparent;border:1px solid var(--border2);color:var(--text);padding:7px 12px;border-radius:7px;font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+.mono{font-family:var(--mono)}
+@media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<nav><span class="logo">OANDA &middot; EXECUTE</span><span><a href="index.html">Dashboard</a><a href="positions.html">Positions</a></span></nav>
+<main id="app"><p class="m"><span class="spin"></span> Loading ticket&hellip;</p></main>
+<script>
+(function(){
+'use strict';
+var API = (location.hostname==='localhost'||location.hostname==='127.0.0.1') ? 'http://localhost:8000' : 'https://oanda-trading-center.onrender.com';
+// OANDA price precision per instrument (orders with more decimals are rejected)
+var PREC = {XAU_USD:3,XAG_USD:5,NATGAS_USD:3,WTICO_USD:3,BCO_USD:3,CORN_USD:3,WHEAT_USD:3,SOYBN_USD:3,SUGAR_USD:5,SPX500_USD:1,NAS100_USD:1,UK100_GBP:1,DE30_EUR:1,USD_JPY:3,GBP_JPY:3,EUR_JPY:3,EUR_USD:5,GBP_USD:5,AUD_USD:5,USD_CAD:5,USD_CHF:5};
+var NAMES = {XAU_USD:'Gold',NATGAS_USD:'Natural Gas',WTICO_USD:'WTI Crude',CORN_USD:'Corn',SUGAR_USD:'Sugar',SPX500_USD:'S&P 500',USD_JPY:'USD/JPY',EUR_USD:'EUR/USD',GBP_USD:'GBP/USD',GBP_JPY:'GBP/JPY',WHEAT_USD:'Wheat'};
+var MAX_OPEN = 3, MAX_AGE_MIN = 30;
+var app = document.getElementById('app');
+var esc = function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+var dp = function(i){return PREC[i]!=null?PREC[i]:5;};
+var fx = function(i,x){return x==null||!isFinite(x)?'—':(+x).toFixed(dp(i));};
+var gbp = function(x){return x==null||!isFinite(x)?'—':(x<0?'−£':'£')+Math.abs(x).toFixed(2);};
+
+function decode(){
+  var m = location.hash.match(/[#&]o=([A-Za-z0-9_-]+)/); if(!m) return null;
+  try{
+    var b = m[1].replace(/-/g,'+').replace(/_/g,'/'); while(b.length%4) b+='=';
+    var json = decodeURIComponent(escape(atob(b)));
+    return JSON.parse(json);
+  }catch(e){return null;}
+}
+function validate(t){
+  var errs=[];
+  if(!t||t.v!==1) return ['This link is not a valid order ticket.'];
+  if(!/^[A-Z0-9]{2,8}_[A-Z]{3}$/.test(t.i||'')) errs.push('Unknown instrument.');
+  if(t.s!=='BUY'&&t.s!=='SELL') errs.push('Direction must be BUY or SELL.');
+  if(!(Number.isInteger(t.u)&&t.u>=1&&t.u<=10000000)) errs.push('Units must be a whole number between 1 and 10,000,000.');
+  ['e','sl','t1'].forEach(function(k){ if(!(typeof t[k]==='number'&&isFinite(t[k])&&t[k]>0)) errs.push('Missing or invalid '+({e:'entry',sl:'stop loss',t1:'target 1'})[k]+'.'); });
+  if(!errs.length){
+    var L=t.s==='BUY';
+    if(L ? !(t.sl<t.e&&t.t1>t.e) : !(t.sl>t.e&&t.t1<t.e)) errs.push('Stop and target are on the wrong side of entry for a '+t.s+'.');
+    if(t.t2!=null && (L ? !(t.t2>t.t1) : !(t.t2<t.t1))) errs.push('Target 2 must be beyond target 1.');
+  }
+  return errs;
+}
+function fetchJ(url,opts,ms){
+  var c=new AbortController(), id=setTimeout(function(){c.abort();},ms||60000);
+  return fetch(url,Object.assign({},opts||{},{signal:c.signal})).then(function(r){clearTimeout(id);return r.json().catch(function(){return {};}).then(function(j){j._status=r.status;return j;});},function(e){clearTimeout(id);throw e;});
+}
+
+var T = decode(), ERR = validate(T), S = {acct:null,trades:null,price:null,loading:true,err:null,split:null,checked:false,stale:false,placing:false,done:null};
+if(T && T.t2==null) S.split='t1';
+else S.split='half';
+if(T && T.ts) S.stale = (Date.now()-T.ts) > MAX_AGE_MIN*60000;
+
+function load(){
+  if(ERR.length){render();return;}
+  var slow=setTimeout(function(){ if(S.loading){ S.wake=true; render(); } },4000);
+  Promise.all([
+    fetchJ(API+'/api/account').catch(function(){return null;}),
+    fetchJ(API+'/api/trades').catch(function(){return null;}),
+    fetchJ(API+'/api/price/'+T.i).catch(function(){return null;})
+  ]).then(function(r){
+    clearTimeout(slow);
+    S.acct = r[0]&&r[0].ok ? r[0].account : null;
+    S.trades = r[1]&&r[1].ok ? r[1].trades : null;
+    S.price = r[2]&&r[2].ok ? r[2].price : null;
+    if(!S.acct && !S.trades) S.err='Could not reach your trading server. It may still be waking up — press Refresh in a moment.';
+    S.loading=false; render();
+  });
+}
+
+function analysis(){
+  var L=T.s==='BUY', out={blocks:[],warns:[],live:null,riskNow:null,slipR:null};
+  var R=Math.abs(T.e-T.sl);
+  if(S.price && (S.price.ask||S.price.bid)){
+    var live = L ? S.price.ask : S.price.bid; out.live=live;
+    if(L ? live<=T.sl : live>=T.sl) out.blocks.push('Price ('+fx(T.i,live)+') is already through your stop — the setup is gone.');
+    else if(L ? live>=T.t1 : live<=T.t1) out.blocks.push('Price ('+fx(T.i,live)+') has already reached target 1 — you missed this one. Don\'t chase.');
+    else {
+      out.slipR = (L ? live-T.e : T.e-live)/R;
+      var riskScale = Math.abs(live-T.sl)/R;
+      if(T.r) out.riskNow = T.r*riskScale;
+      if(out.slipR>0.25) out.warns.push('Price has moved '+out.slipR.toFixed(2)+'R past your planned entry — real risk is '+Math.round((riskScale-1)*100)+'% bigger and reward is smaller. Consider a limit order at your entry instead.');
+      if(S.price.spread && S.price.spread > 0.15*R) out.warns.push('Spread is '+fx(T.i,S.price.spread)+' — over 15% of your stop distance. Liquidity is thin right now.');
+    }
+  } else out.warns.push('Live price unavailable for '+T.i+' — check it in OANDA/TradingView before confirming.');
+  if(S.trades){
+    var n=S.trades.length;
+    if(n>=MAX_OPEN) out.blocks.push('You already have '+n+' open trades on OANDA — your maximum is '+MAX_OPEN+'.');
+    var same=S.trades.filter(function(t){return t.instrument===T.i;});
+    if(same.length) out.warns.push('You already have '+same.length+' open trade(s) on '+T.i+'. This adds to that exposure.');
+  }
+  if(S.acct){
+    var bal=+S.acct.balance, ma=+S.acct.marginAvailable;
+    if(T.r && bal) { var pc=(out.riskNow||T.r)/bal*100; if(pc>3.05) out.warns.push('Risk is '+pc.toFixed(2)+'% of your live balance (£'+bal.toFixed(2)+') — above your 3% rule. Your Trading Machine balance may be out of date.'); }
+    if(bal && ma/bal<0.1) out.warns.push('Margin available is under 10% of balance.');
+  }
+  if(S.stale) out.warns.push('This ticket is more than '+MAX_AGE_MIN+' minutes old. Re-check the chart.');
+  return out;
+}
+function orders(){
+  var u=T.u, L=T.s==='BUY', r=function(x){return +(+x).toFixed(dp(T.i));};
+  if(S.split==='half' && T.t2!=null && u>=2){ var a=Math.ceil(u/2), b=u-a; return [{units:a,tp:r(T.t1),lbl:'T1'},{units:b,tp:r(T.t2),lbl:'T2'}]; }
+  return [{units:u,tp:r(S.split==='t2'&&T.t2!=null?T.t2:T.t1),lbl:S.split==='t2'?'T2':'T1'}];
+}
+
+function render(){
+  if(ERR.length){ app.innerHTML='<h1>Order ticket problem</h1><div class="card">'+ERR.map(function(e){return '<div class="msg block">'+esc(e)+'</div>';}).join('')+'<p class="m" style="margin-top:8px">Open the ticket again from the OANDA Trading Machine with the “Send to OANDA” button.</p></div>'; return; }
+  if(S.done){
+    app.innerHTML='<h1>'+(S.done.ok?'Order placed':'Order problem')+'</h1><div class="card">'+S.done.lines.map(function(l){return '<div class="msg '+l.c+'">'+l.t+'</div>';}).join('')+
+      '<div class="row" style="margin-top:12px"><a class="ghost" href="positions.html" style="text-decoration:none">Open positions &rarr;</a></div>'+
+      '<p class="m" style="margin-top:12px;font-size:12px">Now log it in the OANDA Trading Machine (Size &amp; Enter &rarr; Log as open position) so its risk limits and journal stay in sync.</p></div>';
+    return;
+  }
+  var L=T.s==='BUY', name=NAMES[T.i]||T.i, an=S.loading?null:analysis(), od=orders();
+  var blocked = !an || an.blocks.length>0;
+  var needStale = S.stale;
+  var can = !S.loading && !blocked && S.checked && !S.placing && !S.err;
+  var html='<h1>Confirm order</h1><p class="sub">From your OANDA Trading Machine'+(T.g?' &middot; grade <b>'+esc(T.g)+'</b>':'')+(T.set?' &middot; '+esc(T.set):'')+(T.ts?' &middot; created '+new Date(T.ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):'')+'</p>'+
+  '<div class="card"><div class="head"><span class="side '+T.s+'">'+T.s+'</span><span class="big">'+T.u.toLocaleString('en-GB')+'</span><span class="m">units</span><b>'+esc(name)+'</b><span class="m mono">'+esc(T.i)+'</span></div>'+
+  '<div class="grid"><div class="cell"><div class="l">Planned entry</div><div class="v b">'+fx(T.i,T.e)+'</div></div><div class="cell"><div class="l">Live '+(L?'ask':'bid')+'</div><div class="v">'+(S.loading?'<span class="spin"></span>':fx(T.i,an&&an.live))+'</div></div><div class="cell"><div class="l">Stop loss</div><div class="v r">'+fx(T.i,T.sl)+'</div></div>'+
+  '<div class="cell"><div class="l">Target 1</div><div class="v g">'+fx(T.i,T.t1)+'</div></div><div class="cell"><div class="l">Target 2</div><div class="v g">'+fx(T.i,T.t2)+'</div></div><div class="cell"><div class="l">Risk if stopped</div><div class="v r">'+gbp(an&&an.riskNow!=null?an.riskNow:T.r)+'</div></div></div></div>';
+
+  if(S.loading){ html+='<div class="card"><p class="m"><span class="spin"></span> Checking your live account, open trades and price&hellip;'+(S.wake?'<br><small>Your server is on free hosting and may take up to a minute to wake up.</small>':'')+'</p></div>'; app.innerHTML=html; return; }
+
+  html+='<div class="card"><b>Live checks</b>';
+  if(S.err) html+='<div class="msg block">'+esc(S.err)+'</div>';
+  if(S.acct) html+='<div class="msg info">Account: balance <b class="mono">£'+(+S.acct.balance).toFixed(2)+'</b> &middot; NAV <b class="mono">£'+(+S.acct.NAV).toFixed(2)+'</b> &middot; open trades <b class="mono">'+(S.trades?S.trades.length:'?')+' / '+MAX_OPEN+'</b></div>';
+  an.blocks.forEach(function(b){html+='<div class="msg block">&#9940; '+esc(b)+'</div>';});
+  an.warns.forEach(function(w){html+='<div class="msg warn">&#9888; '+esc(w)+'</div>';});
+  if(!an.blocks.length && !an.warns.length && !S.err) html+='<div class="msg ok">&#10003; Price, account and open trades all check out.</div>';
+  html+='</div>';
+
+  html+='<div class="card"><b>Take-profit plan</b><div style="margin-top:6px">'+
+    (T.t2!=null && T.u>=2 ? opt('half','Split in two orders (recommended)','Half the units take profit at T1, half at T2. Both share the same stop. Matches your playbook: bank 50% at T1, let the rest run.') : '')+
+    opt('t1','All at Target 1',fx(T.i,T.t1))+
+    (T.t2!=null ? opt('t2','All at Target 2',fx(T.i,T.t2)+' — bigger reward, lower hit rate') : '')+
+    '</div><p class="m" style="font-size:12px;margin-top:6px">Orders: '+od.map(function(o){return '<span class="mono">'+T.s+' '+o.units+' &middot; SL '+fx(T.i,T.sl)+' &middot; TP '+fx(T.i,o.tp)+'</span>';}).join(' + ')+'</p></div>';
+
+  html+='<div class="card"><label class="chk"><input type="checkbox" id="ck"'+(S.checked?' checked':'')+'><span>I\'ve checked the chart on TradingView and this is the trade I planned.'+(needStale?' The ticket is old and I\'ve re-checked the levels.':'')+'</span></label>'+
+    '<button class="go '+T.s+'" id="go"'+(can?'':' disabled')+'>'+(S.placing?'<span class="spin"></span> Placing&hellip;':'Confirm '+T.s+' '+T.u.toLocaleString('en-GB')+' '+esc(name)+' &mdash; LIVE')+'</button>'+
+    '<p class="m" style="font-size:12px;margin-top:8px">This places a <b>real</b> market order on your live OANDA account with the stop loss and take profit attached.</p>'+
+    '<div class="row" style="margin-top:10px"><button class="ghost" id="refresh">Refresh live checks</button><button class="ghost" id="forget">Forget trade key on this device</button></div></div>';
+  app.innerHTML=html;
+}
+function opt(v,t,s){return '<label class="opt"><input type="radio" name="split" value="'+v+'"'+(S.split===v?' checked':'')+'><span>'+esc(t)+'<small>'+esc(s)+'</small></span></label>';}
+
+function place(){
+  if(S.placing) return; S.placing=true; render();
+  var od=orders(), lines=[], okCount=0;
+  var seq=Promise.resolve();
+  od.forEach(function(o,k){
+    seq=seq.then(function(){
+      return fetchJ(API+'/api/place-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({instrument:T.i,direction:T.s,units:o.units,stop_loss:+T.sl.toFixed(dp(T.i)),take_profit:o.tp})},45000)
+      .then(function(d){
+        if(d.ok){ okCount++; var tx=d.result&&d.result.orderFillTransaction; lines.push({c:'ok',t:'&#10003; '+T.s+' '+o.units+' '+esc(T.i)+' filled'+(tx&&tx.price?' at <b class="mono">'+esc(tx.price)+'</b>':'')+' &middot; TP '+o.lbl+' '+fx(T.i,o.tp)+(tx&&tx.tradeOpened?' &middot; trade #'+esc(tx.tradeOpened.tradeID):'')}); }
+        else if(d._status===401){ lines.push({c:'block',t:'Trade key missing or wrong — order '+(k+1)+' was NOT placed.'}); throw 'stop'; }
+        else { var cancel=d.result&&d.result.orderCancelTransaction; lines.push({c:'block',t:'Order '+(k+1)+' was not filled: '+esc(d.detail||(cancel&&cancel.reason)||'unknown error')}); throw 'stop'; }
+      });
+    });
+  });
+  seq.catch(function(e){ if(e!=='stop') lines.push({c:'block',t:'Network error: '+esc(e&&e.message||e)+'. Check OANDA before retrying — the order may have gone through.'}); })
+  .then(function(){
+    if(okCount && okCount<od.length) lines.push({c:'warn',t:'Only part of the order was placed. Check your OANDA positions now.'});
+    S.placing=false; S.done={ok:okCount===od.length,lines:lines}; history.replaceState(null,'',location.pathname); render();
+  });
+}
+
+app.addEventListener('click',function(e){
+  var t=e.target;
+  if(t.id==='go'){ place(); }
+  else if(t.id==='refresh'){ S.loading=true; S.err=null; render(); load(); }
+  else if(t.id==='forget'){ window.OTCTradeKey&&window.OTCTradeKey.clear(); t.textContent='Trade key forgotten'; }
+});
+app.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='ck'){ S.checked=t.checked; render(); }
+  else if(t.name==='split'){ S.split=t.value; render(); }
+});
+render(); load();
+})();
+</script>
+</body>
+</html>
