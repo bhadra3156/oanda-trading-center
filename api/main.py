@@ -3,11 +3,11 @@ Oanda Trading Center — FastAPI Backend v2
 8 instruments: GBP/JPY, EUR/USD, XAU/USD, SUGAR, WHEAT, SPX500, WTI, NATGAS
 Mode 1 Semi-Auto Trading: Signal → Telegram YES/NO → Execute
 """
-import os, asyncio, logging
+import os, re, hmac, asyncio, logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -76,6 +76,15 @@ INSTRUMENTS = [
 # ── Auto-trader state ─────────────────────────────────────────────────────────
 _auto_trader_running = False
 _last_tg_update_id   = 0
+
+# ── TRADE KEY (protects order / close / stop-change endpoints) ────────────────
+# Set TRADE_KEY in your Render environment to turn protection on.
+# Until it is set, these endpoints behave exactly as before.
+TRADE_KEY = os.getenv("TRADE_KEY", "").strip()
+
+def _require_trade_key(x_trade_key):
+    if TRADE_KEY and not hmac.compare_digest((x_trade_key or "").strip(), TRADE_KEY):
+        raise HTTPException(status_code=401, detail="Trade key required")
 
 # ── MODELS ────────────────────────────────────────────────────────────────────
 class OrderRequest(BaseModel):
@@ -162,6 +171,17 @@ async def get_prices():
         except Exception:
             pass
     return {"ok": True, "prices": prices, "timestamp": datetime.utcnow().isoformat()}
+
+
+# ── SINGLE LIVE PRICE (used by execute.html) ─────────────────────────────────
+@app.get("/api/price/{instrument}")
+async def get_price(instrument: str):
+    if not re.fullmatch(r"[A-Z0-9]{2,8}_[A-Z]{3}", instrument or ""):
+        raise HTTPException(status_code=400, detail="Bad instrument")
+    try:
+        return {"ok": True, "price": oanda.get_live_price(instrument)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── TRADES ────────────────────────────────────────────────────────────────────
@@ -385,7 +405,8 @@ async def startup_event():
 
 # ── PLACE ORDER (manual) ──────────────────────────────────────────────────────
 @app.post("/api/place-order")
-async def place_order(order: OrderRequest):
+async def place_order(order: OrderRequest, x_trade_key: Optional[str] = Header(default=None)):
+    _require_trade_key(x_trade_key)
     try:
         units  = order.units if order.direction == "BUY" else -order.units
         result = oanda.place_order_with_levels(
@@ -421,7 +442,8 @@ async def place_order(order: OrderRequest):
 
 # ── CLOSE TRADE ───────────────────────────────────────────────────────────────
 @app.post("/api/close-trade")
-async def close_trade(req: CloseRequest):
+async def close_trade(req: CloseRequest, x_trade_key: Optional[str] = Header(default=None)):
+    _require_trade_key(x_trade_key)
     try:
         if req.units is not None:
             result = oanda.close_trade_partial(req.trade_id, req.units)
@@ -434,7 +456,8 @@ async def close_trade(req: CloseRequest):
 
 # ── MODIFY STOP LOSS ──────────────────────────────────────────────────────────
 @app.post("/api/modify-sl")
-async def modify_sl(req: ModifySlRequest):
+async def modify_sl(req: ModifySlRequest, x_trade_key: Optional[str] = Header(default=None)):
+    _require_trade_key(x_trade_key)
     try:
         result = oanda.modify_trade_sl(req.trade_id, req.new_sl_price)
         return {"ok": True, "result": result}
