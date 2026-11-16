@@ -264,6 +264,7 @@ tr:hover td{background:rgba(255,255,255,0.015)}
     <div class="sec-title">Open Positions &mdash; Live Management</div>
     <div class="sec-actions">
       <button class="action-btn danger" onclick="confirmCloseAll()">Close All</button>
+      <button class="action-btn info" id="send-otm" onclick="sendToMachine()" title="Copies your open trades, closed trades and balance so the Trading Machine can import them. Read-only: nothing is traded.">Send to Trading Machine</button>
       <button class="action-btn info" onclick="loadAll()">Refresh</button>
     </div>
   </div>
@@ -367,6 +368,8 @@ tr:hover td{background:rgba(255,255,255,0.015)}
 
 <script src="trade-key.js"></script>
 <script>
+let CUR = '£'; // account currency symbol, set from the account on each refresh
+const CURSYM = {GBP:'£',USD:'$',EUR:'€',JPY:'¥',CHF:'CHF ',AUD:'A$',CAD:'C$'};
 const API = window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1'
   ? 'http://localhost:8000'
   : 'https://oanda-trading-center.onrender.com';
@@ -465,7 +468,7 @@ function confirmClose(tradeId, instName, pnl, units, dir){
     </div>
     <div class="modal-info-row">
       <span class="modal-info-lbl">Current P&amp;L</span>
-      <span class="modal-info-val" style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}$${fmt(pnl)}</span>
+      <span class="modal-info-val" style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${CUR}${fmt(pnl)}</span>
     </div>`;
 
   // Reset to 100%
@@ -562,13 +565,13 @@ function renderPositions(trades){
 
   if(!trades||trades.length===0){
     container.innerHTML='<div class="empty">No open positions.<br><a href="calculator.html" style="color:var(--blue);text-decoration:none">Go to Calculator to find a setup</a></div>';
-    if(uplEl)uplEl.textContent='$0.00';
+    if(uplEl)uplEl.textContent=CUR+'0.00';
     if(posEl)posEl.textContent='0 positions';
     return;
   }
 
   const totalUpl=trades.reduce((s,t)=>s+parseFloat(t.unrealizedPL||0),0);
-  if(uplEl){uplEl.textContent=(totalUpl>=0?'+':'')+'$'+fmt(totalUpl);uplEl.className='acc-val '+(totalUpl>=0?'g':'r');}
+  if(uplEl){uplEl.textContent=(totalUpl>=0?'+':'')+CUR+fmt(totalUpl);uplEl.className='acc-val '+(totalUpl>=0?'g':'r');}
   if(posEl)posEl.textContent=trades.length+' positions';
 
   container.innerHTML=trades.map((t,idx)=>{
@@ -602,7 +605,7 @@ function renderPositions(trades){
             </div>
           </div>
           <div class="pos-right">
-            <div class="pos-pnl ${pnl>=0?'pos':'neg'}">${pnl>=0?'+':''}$${fmt(pnl)}</div>
+            <div class="pos-pnl ${pnl>=0?'pos':'neg'}">${pnl>=0?'+':''}${CUR}${fmt(pnl)}</div>
             <div class="pos-pnl-pct" style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${pnlPct}%</div>
           </div>
         </div>
@@ -686,7 +689,7 @@ function renderHistory(trades){
       <td>${units.toLocaleString()}</td>
       <td>${t.price||'—'}</td>
       <td>${t.averageClosePrice||'—'}</td>
-      <td class="${pnl>=0?'td-pnl-pos':'td-pnl-neg'}">${pnl>=0?'+':''}$${fmt(pnl)}</td>
+      <td class="${pnl>=0?'td-pnl-pos':'td-pnl-neg'}">${pnl>=0?'+':''}${CUR}${fmt(pnl)}</td>
       <td><span class="td-outcome ${outcome.toLowerCase()}">${outcome}</span></td>
     </tr>`;
   }).join('');
@@ -698,29 +701,30 @@ async function loadAll(){
     const [accR,trR,histR]=await Promise.all([
       fetch(`${API}/api/account`,{signal:AbortSignal.timeout(10000)}),
       fetch(`${API}/api/trades`,{signal:AbortSignal.timeout(10000)}),
-      fetch(`${API}/api/account`,{signal:AbortSignal.timeout(10000)}),
+      fetch(`${API}/api/history?count=50`,{signal:AbortSignal.timeout(10000)}).catch(()=>null),
     ]);
     const accD=await accR.json();
     const trD=await trR.json();
 
     if(accD.ok){
       const acc=accD.account,pnl=accD.pnl||{};
+      CUR=CURSYM[acc.currency]||((acc.currency||'')+' ');
       const bal=parseFloat(acc.balance||0),nav=parseFloat(acc.NAV||0);
       const upl=parseFloat(acc.unrealizedPL||0),mar=parseFloat(acc.marginAvailable||0);
       const mpct=nav>0?mar/nav*100:0;
-      document.getElementById('a-bal').textContent='$'+fmt(bal);
+      document.getElementById('a-bal').textContent=CUR+fmt(bal);
       document.getElementById('a-cur').textContent=acc.currency||'GBP';
-      document.getElementById('nav-bal').textContent='$'+fmt(bal);
-      document.getElementById('a-nav').textContent='$'+fmt(nav);
-      document.getElementById('a-upl').textContent='Unrealized: '+(upl>=0?'+':'')+'$'+fmt(upl);
+      document.getElementById('nav-bal').textContent=CUR+fmt(bal);
+      document.getElementById('a-nav').textContent=CUR+fmt(nav);
+      document.getElementById('a-upl').textContent='Unrealized: '+(upl>=0?'+':'')+CUR+fmt(upl);
       document.getElementById('a-upl').style.color=upl>=0?'var(--green)':'var(--red)';
       const me=document.getElementById('a-mar');
-      me.textContent='$'+fmt(mar);
+      me.textContent=CUR+fmt(mar);
       me.className='acc-val '+(mpct<5?'r':mpct<20?'gold':'g');
       document.getElementById('a-mpct').textContent=fmt(mpct,1)+'% of NAV';
       document.getElementById('a-mcard').className='acc-card '+(mpct<5?'warn':mpct<20?'gold':'g');
       const pe=document.getElementById('a-pnl');
-      pe.textContent=(pnl.total_pnl>=0?'+':'')+'$'+fmt(pnl.total_pnl||0);
+      pe.textContent=(pnl.total_pnl>=0?'+':'')+CUR+fmt(pnl.total_pnl||0);
       pe.className='acc-val '+(pnl.total_pnl>=0?'g':'r');
       document.getElementById('a-wr').textContent=(pnl.trade_count||0)+' trades today';
     }
@@ -728,9 +732,33 @@ async function loadAll(){
     if(trD.ok){
       allTrades=trD.trades;
       renderPositions(trD.trades);
-      renderHistory([]);
     }
+    try{ const hD=histR&&histR.ok?await histR.json():null; renderHistory(hD&&hD.ok?hD.trades:[]); }catch(e){ renderHistory([]); }
   }catch(e){console.error(e);}
+}
+
+// ── SEND TO TRADING MACHINE (read-only copy) ───────────────────────────────
+const OTM_URL = 'https://claude.ai/artifact/29hZNzixmrKDuCRunSUuxz#positions';
+async function sendToMachine(){
+  const b=document.getElementById('send-otm'); b.disabled=true; const old=b.textContent; b.textContent='Reading OANDA…';
+  try{
+    const r=await fetch(`${API}/api/sync-snapshot?closed=100`,{signal:AbortSignal.timeout(20000)});
+    const d=await r.json(); if(!d.ok||!d.snapshot) throw new Error(d.detail||'No data');
+    const text='OTM-SYNC1 '+JSON.stringify(d.snapshot);
+    let copied=false; try{ await navigator.clipboard.writeText(text); copied=true; }catch(e){}
+    if(copied){
+      showToast('success',`Copied ${d.snapshot.open.length} open and ${d.snapshot.closed.length} closed trades. In the Trading Machine: Positions → Sync from OANDA → paste.`);
+      window.open(OTM_URL,'otm');
+    } else { showCopyBox(text); }
+  }catch(e){ showToast('error','Could not read OANDA: '+e.message); }
+  finally{ b.disabled=false; b.textContent=old; }
+}
+function showCopyBox(text){
+  let w=document.getElementById('otm-copy');
+  if(!w){ w=document.createElement('div'); w.id='otm-copy'; w.style.cssText='position:fixed;inset:10% 10% auto;z-index:999;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px';
+    w.innerHTML='<div style="margin-bottom:8px">Your browser blocked automatic copying. Select all of this text, copy it, then paste it into the Trading Machine (Positions → Sync from OANDA).</div><textarea style="width:100%;height:160px;background:var(--bg);color:inherit"></textarea><div style="text-align:right;margin-top:8px"><button class="action-btn info" type="button">Done</button></div>';
+    w.querySelector('button').onclick=()=>w.remove(); document.body.appendChild(w); }
+  const ta=w.querySelector('textarea'); ta.value=text; ta.focus(); ta.select();
 }
 
 loadAll();
