@@ -1,15 +1,16 @@
 {
   "outputDirectory": "frontend",
   "routes": [
+    { "src": "/journal(\\.html)?", "status": 308, "headers": { "Location": "https://claude.ai/artifact/29hZNzixmrKDuCRunSUuxz#journal" } },
+    { "src": "/performance(\\.html)?", "status": 308, "headers": { "Location": "https://claude.ai/artifact/29hZNzixmrKDuCRunSUuxz#performance" } },
+    { "src": "/risk(\\.html)?", "status": 308, "headers": { "Location": "https://claude.ai/artifact/29hZNzixmrKDuCRunSUuxz#risk" } },
+    { "src": "/correlation(\\.html)?", "status": 308, "headers": { "Location": "https://claude.ai/artifact/29hZNzixmrKDuCRunSUuxz#risk" } },
     { "src": "/", "dest": "/index.html" },
     { "src": "/index.html", "dest": "/index.html" },
     { "src": "/calculator.html", "dest": "/calculator.html" },
     { "src": "/positions.html", "dest": "/positions.html" },
-    { "src": "/journal.html", "dest": "/journal.html" },
-    { "src": "/risk.html", "dest": "/risk.html" },
-    { "src": "/correlation.html", "dest": "/correlation.html" },
-    { "src": "/correlation.css", "dest": "/correlation.css" },
-    { "src": "/correlation.js", "dest": "/correlation.js" },
+    { "src": "/backtest.html", "dest": "/backtest.html" },
+    { "src": "/execute.html", "dest": "/execute.html" },
     { "src": "/(.*)", "dest": "/$1" }
   ]
 }
