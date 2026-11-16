@@ -194,6 +194,36 @@ async def get_trades():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── CLOSED TRADE HISTORY (read-only) ──────────────────────────────────────────
+@app.get("/api/history")
+async def get_history(count: int = 50):
+    try:
+        return {"ok": True, "trades": oanda.get_trade_history(count=max(1, min(int(count), 500)))}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── SYNC SNAPSHOT (read-only; for the "Send to Trading Machine" button) ──────
+@app.get("/api/sync-snapshot")
+async def sync_snapshot(closed: int = 100):
+    from api.sync import build_snapshot
+    try:
+        account = oanda.get_account_summary()
+        open_tr = oanda.get_open_trades()
+        closed_tr = oanda.get_trade_history(count=max(1, min(int(closed), 500)))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    prices = {}
+    for inst in sorted({t.get("instrument") for t in open_tr if t.get("instrument")} | {"GBP_USD", "EUR_USD", "USD_JPY"}):
+        try:
+            p = oanda.get_live_price(inst)
+            if p and p.get("mid"):
+                prices[inst] = p["mid"]
+        except Exception:
+            pass
+    return {"ok": True, "snapshot": build_snapshot(account, open_tr, closed_tr, prices)}
+
+
 # ── ANALYSE ONE INSTRUMENT ────────────────────────────────────────────────────
 def _analyse_one(inst: str) -> dict:
     try:
