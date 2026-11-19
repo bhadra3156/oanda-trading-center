@@ -58,6 +58,11 @@ telegram = TelegramBot()
 db       = SupabaseClient()
 calc     = PositionCalculator(oanda)
 
+# ── Live board + read-only Claude connector (/mcp/<MCP_SECRET>) ────────────────
+from api import mcp_server
+mcp_server.init(oanda)
+app.include_router(mcp_server.router)
+
 _alerted  = set()
 _executor = ThreadPoolExecutor(max_workers=8)
 
@@ -430,6 +435,7 @@ async def telegram_polling_loop():
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(telegram_polling_loop())
+    asyncio.create_task(mcp_server.live_loop(telegram))
     logger.info("Auto-trader background task launched")
 
 
